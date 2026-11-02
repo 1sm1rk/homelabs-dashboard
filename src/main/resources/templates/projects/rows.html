@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- The lean rows alone: reference, name, status badge, label chips. No excerpt, no
+     description — the list reads what the API's lean answer carries and nothing more. -->
+<tbody id="project-rows" th:fragment="rows">
+<tr th:each="project : ${projects}">
+    <td class="mono" th:text="${project.reference}">WEB</td>
+    <td>
+        <!-- A plain link for a full load; htmx loads the detail into the working area and
+             keeps the URL shareable. -->
+        <a th:href="@{/projects/{reference}(reference=${project.reference})}"
+           th:attr="hx-get=@{/projects/{reference}(reference=${project.reference})}"
+           hx-target="#main" hx-swap="innerHTML" hx-push-url="true"
+           th:text="${project.name}">Project</a>
+    </td>
+    <td><span th:replace="~{projects/fragments :: badge(${project.statusKey}, ${project.statusClass})}"></span></td>
+    <td><span th:replace="~{projects/fragments :: chips(${project.labels})}"></span></td>
+</tr>
+<tr th:if="${#lists.isEmpty(projects)}">
+    <td colspan="4" class="empty" th:text="#{projects.list.empty}">No projects.</td>
+</tr>
+</tbody>
+</body>
+</html>

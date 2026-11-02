@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- The module's one badge: text from a status message key, colour from the status
+     class. Both status vocabularies (project lifecycle and item status) render through
+     it, so a new status costs a key and a modifier, not a component. -->
+<span th:fragment="badge(labelKey, modifier)" class="badge" th:classappend="${modifier}"
+      th:text="#{__${labelKey}__}">status</span>
+
+<!-- Label chips: label names are backend data and never translated; an empty label set
+     renders nothing at all (no empty chip row). -->
+<span th:fragment="chips(labels)" class="chips" th:if="${!#lists.isEmpty(labels)}">
+    <span class="chip" th:each="label : ${labels}" th:text="${label}">label</span>
+</span>
+
+<!-- One work-package or task row of the plan tree: reference, title, status badge,
+     assignee, due date and the item's position inside the project. -->
+<tr th:fragment="itemRow(item, rowClass)" th:class="${rowClass}">
+    <td class="mono tree__reference" th:text="${item.reference}">WEB-1</td>
+    <td class="tree__title" th:text="${item.title}">title</td>
+    <td><span th:replace="~{projects/fragments :: badge(${item.statusKey}, ${item.statusClass})}"></span></td>
+    <td class="muted" th:text="${item.assignee} ?: #{projects.item.unassigned}">assignee</td>
+    <td class="mono" th:text="${item.dueDate} ?: '–'">2026-11-01</td>
+    <td class="mono muted" th:text="${item.sortOrder}">1</td>
+</tr>
+</body>
+</html>

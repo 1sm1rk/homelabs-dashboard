@@ -6,6 +6,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 /**
  * The module registry is the shell's navigation contract: one descriptor per module,
@@ -44,8 +45,10 @@ class ModuleRegistryTest {
     }
 
     @Test
-    void projectsDeclaresNoSubnavYet() {
-        assertThat(registry.find("projects").orElseThrow().subnav()).isEmpty();
+    void projectsDeclaresItsOverviewEntry() {
+        assertThat(registry.find("projects").orElseThrow().subnav())
+                .extracting(ModuleDescriptor.SubnavItem::labelKey, ModuleDescriptor.SubnavItem::path)
+                .containsExactly(tuple("module.projects.subnav.overview", "/projects"));
     }
 
     @Test

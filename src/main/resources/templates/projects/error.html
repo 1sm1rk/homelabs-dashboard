@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de"
+      th:replace="~{layout :: page(title=#{projects.error.title}, content=~{::notice})}">
+<body>
+<!-- What the module shows when the backend could not answer: a localized headline for the
+     kind of problem and, next to it, the backend's own message as data. -->
+<section class="page" th:fragment="notice">
+    <h1 class="page__title" th:text="#{projects.error.title}">Backend error</h1>
+    <div class="alert">
+        <p th:text="#{__${headingKey}__}">Something went wrong.</p>
+        <p class="alert__detail" th:if="${detail != null}" th:text="${detail}">technical message</p>
+    </div>
+    <p>
+        <a class="button button--ghost" th:href="@{/projects}" th:text="#{projects.error.back}">Back to the overview</a>
+    </p>
+</section>
+</body>
+</html>

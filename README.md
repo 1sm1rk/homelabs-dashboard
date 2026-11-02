@@ -17,7 +17,8 @@ Requires JDK 25 and Maven.
 
 - Run: `mvn spring-boot:run` — dev server on port 8094
 - Verify: `mvn clean verify` (unit tests, boot smoke test, shell rendering,
-  sign-out and session-cookie integration tests)
+  projects read views, sign-out and session-cookie integration tests; the module
+  ITs run a fake JDK-HttpServer projects API — no Docker, no database)
 
 Deployment data comes from the environment; the values are mapped in
 `src/main/resources/application.yml`:
@@ -38,6 +39,17 @@ into the shell before starting:
 set -a; . ./.env; set +a
 mvn spring-boot:run
 ```
+
+## Module 1: projects
+
+`/projects` lists the projects as the backend's lean summaries (reference, name,
+status badge, labels), filtered by the REST's own `status` and `q` parameters.
+`/projects/{reference}` shows one project: canonical description, labels, the
+work-package/task tree in the backend's plan order, and the comment, activity and
+attachment sections. Attachment downloads go through the dashboard (`…/attachments/
+{id}/content`), which forwards the session's token and passes the bytes through — the
+browser never talks to the backend. Reads only: status transitions, inline edits and
+the create/comment forms are the next step.
 
 `GET /health` is the open liveness probe (no session needed). Every other
 route redirects to the realm login until a session exists — with the values

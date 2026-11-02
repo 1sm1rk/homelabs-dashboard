@@ -18,14 +18,14 @@ public class ModuleRegistry {
     private final List<ModuleDescriptor> modules;
 
     public ModuleRegistry(DashboardModuleProperties properties) {
-        // No subnav yet: the projects views of this stage are single pages, and the bar
-        // appears by itself as soon as a descriptor declares entries.
+        // The module's own entry point: its overview route. Labels are message keys like
+        // the rail, so the bar renders in the reader's language without template changes.
         this.modules = List.of(new ModuleDescriptor(
                 "projects",
                 "module.projects.nav",
                 "/projects",
                 properties.projects().apiUrl(),
-                List.of()));
+                List.of(new ModuleDescriptor.SubnavItem("module.projects.subnav.overview", "/projects"))));
     }
 
     /** The registered modules in rail order. */

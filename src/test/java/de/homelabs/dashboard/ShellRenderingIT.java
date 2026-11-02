@@ -241,7 +241,9 @@ class ShellRenderingIT {
     }
 
     @Test
-    void rendersNoSubnavWhileTheProjectsModuleDeclaresNone() throws Exception {
+    void rendersNoSubnavOnShellRoutes() throws Exception {
+        // The projects module declares its overview entry, but the shell's own home page
+        // belongs to no module: the bar appears on module routes only.
         mockMvc.perform(home().with(user("di.mueller")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("class=\"subnav\""))));

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- Comments of the open project, newest first as the API delivers them. Read-only in
+     this step: the comment form arrives with the mutation views. -->
+<section class="card" id="comments" th:fragment="section">
+    <div class="card__header">
+        <h2 class="card__title" th:text="#{projects.comments.title}">Comments</h2>
+        <button type="button" class="button button--ghost"
+                th:attr="hx-get=@{/projects/{reference}/comments(reference=${reference})}"
+                hx-target="#comments" hx-swap="outerHTML"
+                th:text="#{projects.section.refresh}">Refresh</button>
+    </div>
+    <ul class="comments" th:if="${!#lists.isEmpty(comments)}">
+        <li class="comments__item" th:each="comment : ${comments}">
+            <p class="comments__meta">
+                <span class="comments__author" th:text="${comment.author}">author</span>
+                <time class="muted" th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+            </p>
+            <p class="comments__text" th:text="${comment.content}">comment</p>
+        </li>
+    </ul>
+    <p class="empty" th:if="${#lists.isEmpty(comments)}" th:text="#{projects.comments.empty}">No comments yet.</p>
+</section>
+</body>
+</html>

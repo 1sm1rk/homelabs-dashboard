@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de"
+      th:replace="~{layout :: page(title=#{projects.list.title}, content=~{::content})}">
+<body>
+<section class="page" th:fragment="content">
+    <h1 class="page__title" th:text="#{projects.list.heading}">Projects</h1>
+
+    <!-- The filter rides the REST parameters unchanged: status and q go to the backend,
+         which owns the matching rules (its default view excludes deactivated and
+         archived projects). htmx swaps only the rows; without JavaScript the same form
+         loads the page again. -->
+    <form class="filters" method="get" th:action="@{/projects}"
+          th:attr="hx-get=@{/projects/rows}" hx-target="#project-rows" hx-swap="outerHTML">
+        <div class="filters__field">
+            <label for="filter-status" th:text="#{projects.filter.status}">Status</label>
+            <select id="filter-status" name="status">
+                <option value="" th:selected="${#strings.isEmpty(statusFilter)}"
+                        th:text="#{projects.filter.statusAll}">all</option>
+                <option th:each="option : ${statusOptions}" th:value="${option.value}"
+                        th:selected="${option.value == statusFilter}"
+                        th:text="#{__${option.labelKey}__}">active</option>
+            </select>
+        </div>
+        <div class="filters__field">
+            <label for="filter-query" th:text="#{projects.filter.query}">Search</label>
+            <input id="filter-query" type="search" name="q" th:value="${queryFilter}">
+        </div>
+        <button class="button" type="submit" th:text="#{projects.filter.apply}">Filter</button>
+    </form>
+
+    <div class="card card--table">
+        <table class="list">
+            <thead>
+            <tr>
+                <th th:text="#{projects.table.reference}">Reference</th>
+                <th th:text="#{projects.table.project}">Project</th>
+                <th th:text="#{projects.table.status}">Status</th>
+                <th th:text="#{projects.table.labels}">Labels</th>
+            </tr>
+            </thead>
+            <tbody id="project-rows" th:replace="~{projects/rows :: rows}"></tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

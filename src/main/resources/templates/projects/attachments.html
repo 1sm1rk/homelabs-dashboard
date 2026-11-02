@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- Attachment metadata. The download link points at this module, never at the backend:
+     the browser has no Bearer token, so the dashboard fetches the bytes and passes them
+     through. -->
+<section class="card" id="attachments" th:fragment="section">
+    <div class="card__header">
+        <h2 class="card__title" th:text="#{projects.attachments.title}">Attachments</h2>
+        <button type="button" class="button button--ghost"
+                th:attr="hx-get=@{/projects/{reference}/attachments(reference=${reference})}"
+                hx-target="#attachments" hx-swap="outerHTML"
+                th:text="#{projects.section.refresh}">Refresh</button>
+    </div>
+    <table class="attachments" th:if="${!#lists.isEmpty(attachments)}">
+        <thead>
+        <tr>
+            <th th:text="#{projects.attachments.filename}">File</th>
+            <th th:text="#{projects.attachments.size}">Size</th>
+            <th th:text="#{projects.attachments.uploaded}">Uploaded</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="attachment : ${attachments}">
+            <td>
+                <a th:href="@{/projects/{reference}/attachments/{attachmentId}/content(reference=${reference}, attachmentId=${attachment.id})}"
+                   th:text="${attachment.filename}">file.txt</a>
+            </td>
+            <td class="mono" th:text="#{projects.attachments.bytes(${attachment.byteSize})}">12 B</td>
+            <td class="muted">
+                <time th:text="${#temporals.format(attachment.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="empty" th:if="${#lists.isEmpty(attachments)}" th:text="#{projects.attachments.empty}">No attachments.</p>
+</section>
+</body>
+</html>

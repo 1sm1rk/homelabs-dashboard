@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- The append-only activity log, newest first: event, actor, the backend's own detail
+     text and — when a harness drove the mutation — the client identity it came from. -->
+<section class="card" id="activity" th:fragment="section">
+    <div class="card__header">
+        <h2 class="card__title" th:text="#{projects.activity.title}">Activity</h2>
+        <button type="button" class="button button--ghost"
+                th:attr="hx-get=@{/projects/{reference}/activity(reference=${reference})}"
+                hx-target="#activity" hx-swap="outerHTML"
+                th:text="#{projects.section.refresh}">Refresh</button>
+    </div>
+    <ul class="activity" th:if="${!#lists.isEmpty(activity)}">
+        <li class="activity__item" th:each="entry : ${activity}">
+            <p class="activity__meta">
+                <span class="activity__event" th:text="#{__${entry.eventKey}__}">updated</span>
+                <span class="muted" th:text="${entry.actor}">actor</span>
+                <span class="muted" th:if="${entry.source != null}" th:text="${entry.source}">source</span>
+                <time class="muted" th:text="${#temporals.format(entry.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+            </p>
+            <p class="activity__detail muted" th:if="${entry.detail != null}" th:text="${entry.detail}">detail</p>
+        </li>
+    </ul>
+    <p class="empty" th:if="${#lists.isEmpty(activity)}" th:text="#{projects.activity.empty}">No activity yet.</p>
+</section>
+</body>
+</html>
