@@ -1,0 +1,10 @@
+target/
+AGENTS.md
+.env
+.idea/
+*.iml
+.eclipse/
+.factorypath
+.classpath
+.settings/
+.project
