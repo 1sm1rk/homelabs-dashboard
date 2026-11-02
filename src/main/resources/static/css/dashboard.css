@@ -223,6 +223,41 @@ p {
     letter-spacing: 0.06em;
 }
 
+.topbar__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.topbar__locales {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+}
+
+.topbar__locale {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.topbar__locale:hover,
+.topbar__locale:focus-visible {
+    color: var(--color-text);
+    background: var(--color-surface-muted);
+    text-decoration: none;
+}
+
+/* The active language: the same muted chrome, but filled and heavier. */
+.topbar__locale--active {
+    color: var(--color-text);
+    font-weight: 600;
+    background: var(--color-surface-muted);
+}
+
 .topbar__identity {
     display: flex;
     align-items: center;

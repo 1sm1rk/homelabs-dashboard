@@ -25,7 +25,7 @@ class ModuleRegistryTest {
         assertThat(modules).hasSize(1);
         ModuleDescriptor projects = modules.getFirst();
         assertThat(projects.id()).isEqualTo("projects");
-        assertThat(projects.navLabel()).isEqualTo("Projects");
+        assertThat(projects.navKey()).isEqualTo("module.projects.nav");
         assertThat(projects.basePath()).isEqualTo("/projects");
     }
 

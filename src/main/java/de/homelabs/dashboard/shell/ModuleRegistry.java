@@ -20,7 +20,7 @@ public class ModuleRegistry {
     public ModuleRegistry(DashboardModuleProperties properties) {
         this.modules = List.of(new ModuleDescriptor(
                 "projects",
-                "Projects",
+                "module.projects.nav",
                 "/projects",
                 properties.projects().apiUrl()));
     }
