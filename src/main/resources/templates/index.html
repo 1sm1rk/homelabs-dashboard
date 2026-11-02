@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en"
+      th:replace="~{layout :: page(title=${title}, content=~{::content})}">
+<body>
+<section class="page" th:fragment="content">
+    <h1 class="page__title">homelabs dashboard</h1>
+    <p class="page__lead">One surface for the homelab services.</p>
+    <p class="muted">The shell, the login gate and the layout are in place; the module views follow.</p>
+</section>
+</body>
+</html>

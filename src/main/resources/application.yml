@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: homelabs-dashboard
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            # Confidential client of the shared realm. The values are deployment data:
+            # the realm is public, the client secret never is.
+            client-id: ${DASHBOARD_CLIENT_ID:dashboard}
+            client-secret: ${DASHBOARD_CLIENT_SECRET:dashboard-dev-secret}
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            # Default points at the live shared realm (it is public), so a dev run logs
+            # in as soon as the dashboard client exists in that realm.
+            issuer-uri: ${DASHBOARD_ISSUER_URI:https://auth.homelabs.de/realms/homelabs}
+
+homelabs:
+  dashboard:
+    modules:
+      projects:
+        # Module 1's REST API: prod container alias http://projects:8090, dev
+        # http://localhost:8093 (the backend's own dev port).
+        api-url: ${DASHBOARD_PROJECTS_API_URL:http://localhost:8093}
+
+server:
+  port: 8094
+
+logging:
+  level:
+    de.homelabs.dashboard: DEBUG

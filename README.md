@@ -13,13 +13,25 @@ the dashboard.
 
 ## How to run / verify
 
-Activates with the first implementation step (the repository currently holds
-the scaffold):
+Requires JDK 25 and Maven.
 
-- Run: `mvn spring-boot:run` (dev port 8094)
-- Verify (tests): `mvn clean verify`
+- Run: `mvn spring-boot:run` — dev server on port 8094
+- Verify: `mvn clean verify` (unit tests, boot smoke test, shell rendering)
 
-`GET /health` is the open liveness probe once the application boots.
+Deployment data comes from the environment; the dev defaults live in
+`src/main/resources/application.yml`:
+
+| Variable | Purpose | Dev default |
+|---|---|---|
+| `DASHBOARD_ISSUER_URI` | issuer of the shared Keycloak realm | `https://auth.homelabs.de/realms/homelabs` |
+| `DASHBOARD_CLIENT_ID` | confidential client of that realm | `dashboard` |
+| `DASHBOARD_CLIENT_SECRET` | that client's secret | `dashboard-dev-secret` |
+| `DASHBOARD_PROJECTS_API_URL` | REST base URL of the projects backend | `http://localhost:8093` |
+
+`GET /health` is the open liveness probe (no session needed). Every other
+route redirects to the realm login until a session exists, so the login flow
+needs the `dashboard` client in the realm. Sessions are held in memory only: a
+restart logs you out.
 
 ## Commit messages
 

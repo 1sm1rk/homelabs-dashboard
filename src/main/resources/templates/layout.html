@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="page(title, content)">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${title} · homelabs|">homelabs</title>
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}" href="/css/dashboard.css">
+    <script th:src="@{/js/htmx.min.js}" src="/js/htmx.min.js" defer></script>
+</head>
+<body>
+<div class="shell">
+    <!-- The rail is rendered from the module registry: adding a module never edits
+         this template. -->
+    <nav class="rail" aria-label="Modules">
+        <a class="rail__brand" th:href="@{/}">homelabs</a>
+        <ul class="rail__list">
+            <li th:each="module : ${modules}" class="rail__item">
+                <a class="rail__link" th:href="@{${module.basePath}}" th:text="${module.navLabel}">Projects</a>
+            </li>
+        </ul>
+    </nav>
+    <div class="workspace">
+        <header class="topbar">
+            <span class="topbar__title" th:text="${title}">homelabs</span>
+            <div class="topbar__identity" th:if="${currentUser != null}">
+                <span class="topbar__user" th:text="${currentUser}">user</span>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="button button--ghost">Sign out</button>
+                </form>
+            </div>
+        </header>
+        <main class="content">
+            <th:block th:replace="${content}"/>
+        </main>
+    </div>
+</div>
+</body>
+</html>
