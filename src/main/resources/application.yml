@@ -8,10 +8,15 @@ spring:
           keycloak:
             provider: keycloak
             # Confidential client of the shared realm. The values are deployment data:
-            # the realm is public, the client secret never is.
+            # the realm is public, the client secret never is — so the secret has NO
+            # default here and the application refuses to start without
+            # DASHBOARD_CLIENT_SECRET.
             client-id: ${DASHBOARD_CLIENT_ID:dashboard}
-            client-secret: ${DASHBOARD_CLIENT_SECRET:dashboard-dev-secret}
+            client-secret: ${DASHBOARD_CLIENT_SECRET}
             authorization-grant-type: authorization_code
+            # Authorization Code + PKCE: Spring adds the code challenge as soon as the
+            # provider advertises its challenge methods (this realm does), so nothing is
+            # pinned here.
             scope: openid,profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
@@ -30,6 +35,17 @@ homelabs:
 
 server:
   port: 8094
+  servlet:
+    session:
+      cookie:
+        # The session cookie is unreadable for scripts, rides only same-site requests
+        # (the login round-trip is a top-level redirect, so lax covers it) and is marked
+        # Secure. Browsers treat http://localhost as a secure context and therefore keep
+        # a Secure cookie there too, so the dev run on port 8094 keeps its session; in
+        # production the cookie only ever travels over TLS, terminated by the Caddy edge.
+        http-only: true
+        same-site: lax
+        secure: true
 
 logging:
   level:

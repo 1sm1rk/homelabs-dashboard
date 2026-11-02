@@ -198,11 +198,15 @@ p {
 
 .workspace {
     display: grid;
-    grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+    /* Topbar, then the optional module subnav (the row stays empty and collapses when
+       the module declares none), then the working area. The children below pin
+       themselves to these rows, so the content fills the page either way. */
+    grid-template-rows: var(--topbar-height) auto minmax(0, 1fr);
     min-width: 0;
 }
 
 .topbar {
+    grid-row: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -273,7 +277,46 @@ p {
     margin: 0;
 }
 
+/* Second navigation level of the active module: same muted chrome as the topbar,
+   one row of links. Rendered only when the module really declares entries. */
+.subnav {
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-5);
+    min-height: 2.25rem;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-sm);
+    overflow-x: auto;
+}
+
+.subnav__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.subnav__link {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.subnav__link:hover,
+.subnav__link:focus-visible {
+    color: var(--color-text);
+    background: var(--color-surface-muted);
+    text-decoration: none;
+}
+
 .content {
+    grid-row: 3;
     padding: var(--space-6) var(--space-5) var(--space-7);
     width: 100%;
     max-width: var(--content-max);

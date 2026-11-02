@@ -34,6 +34,10 @@
                        th:classappend="${currentLocale == 'en'} ? 'topbar__locale--active' : ''"
                        th:attr="aria-current=${currentLocale == 'en'} ? 'true' : null">en</a>
                 </nav>
+                <!-- Identity of the signed-in user and the sign-out form: signing out is a
+                     session mutation, so it is a POST through the security chain. The
+                     CSRF token arrives as the hidden field that Thymeleaf adds for a
+                     th:action form — the same token every other mutation carries. -->
                 <div class="topbar__identity" th:if="${currentUser != null}">
                     <span class="topbar__user" th:text="${currentUser}">user</span>
                     <form th:action="@{/logout}" method="post">
@@ -42,6 +46,16 @@
                 </div>
             </div>
         </header>
+        <!-- Subnav of the module whose route is open. A module without a subnav leaves
+             no bar behind: the block renders nothing at all, the row collapses. -->
+        <nav class="subnav" th:if="${activeModule != null and !#lists.isEmpty(activeModule.subnav)}"
+             th:aria-label="#{shell.subnav.label}" aria-label="Module navigation">
+            <ul class="subnav__list">
+                <li th:each="item : ${activeModule.subnav}" class="subnav__item">
+                    <a class="subnav__link" th:href="@{${item.path}}" th:text="#{__${item.labelKey()}__}">entry</a>
+                </li>
+            </ul>
+        </nav>
         <main class="content">
             <th:block th:replace="${content}"/>
         </main>

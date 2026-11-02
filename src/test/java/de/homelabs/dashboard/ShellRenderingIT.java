@@ -1,6 +1,10 @@
 package de.homelabs.dashboard;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +20,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +38,9 @@ import de.homelabs.dashboard.testsupport.StubClientRegistrationRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,14 +53,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * chrome renders in German (the default) or English, whichever the locale chain
  * resolves.
  *
- * <p>The login gate is replaced by a test-only permit-all chain (no production backdoor);
- * the gate itself is proven by {@link DashboardBootIT}.
+ * <p>The login gate is replaced by a test-only permit-all chain (no production
+ * backdoor); the gate itself is proven by {@link DashboardBootIT}, the sign-out flow by
+ * {@link LogoutIT}.
  */
 @SpringBootTest
 @Import({ StubClientRegistrationRepository.class, ShellRenderingIT.PermitAllConfiguration.class })
 class ShellRenderingIT {
 
     private static final String LOCALE_COOKIE = "dashboard.locale";
+
+    /** Realm issue of the identity claims; the login would hand exactly this over. */
+    private static final String ISSUER = "https://auth.example.test/realms/homelabs";
+
+    /** The subject of the test identity — the realm's raw principal key. */
+    private static final String SUBJECT = "8f2a1c44-0d4b-4f0a-9b28-2d5c6e1f7a90";
 
     @Autowired
     private WebApplicationContext context;
@@ -83,6 +104,7 @@ class ShellRenderingIT {
                 .andExpect(content().string(containsString("<title>Übersicht · homelabs</title>")))
                 .andExpect(content().string(containsString("class=\"page__title\"")))
                 .andExpect(content().string(containsString("Eine Oberfläche für die Homelab-Dienste.")))
+                .andExpect(content().string(not(containsString("class=\"topbar__identity\""))))
                 .andExpect(cookie().doesNotExist(LOCALE_COOKIE));
     }
 
@@ -180,6 +202,51 @@ class ShellRenderingIT {
                 .andExpect(content().string(containsString(">Sign out</button>")));
     }
 
+    @Test
+    void rendersThePreferredUsernameOfTheOidcPrincipal() throws Exception {
+        mockMvc.perform(home().with(authentication(oidcLogin(Map.of(
+                        "preferred_username", "di.mueller",
+                        "name", "Dirk Müller")))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<span class=\"topbar__user\">di.mueller</span>")));
+    }
+
+    @Test
+    void fallsBackToTheNameClaimWithoutAPreferredUsername() throws Exception {
+        mockMvc.perform(home().with(authentication(oidcLogin(Map.of("name", "Dirk Müller")))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<span class=\"topbar__user\">Dirk Müller</span>")));
+    }
+
+    @Test
+    void fallsBackToThePrincipalKeyWithoutAnyDisplayClaim() throws Exception {
+        mockMvc.perform(home().with(authentication(oidcLogin(Map.of()))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<span class=\"topbar__user\">" + SUBJECT + "</span>")));
+    }
+
+    @Test
+    void rendersTheSignOutAsACsrfProtectedPostForm() throws Exception {
+        String html = mockMvc.perform(home().with(user("di.mueller")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"topbar__identity\"")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(signOutForm(html))
+                .contains("method=\"post\"")
+                .contains("action=\"/logout\"")
+                .containsOnlyOnce("name=\"_csrf\"");
+    }
+
+    @Test
+    void rendersNoSubnavWhileTheProjectsModuleDeclaresNone() throws Exception {
+        mockMvc.perform(home().with(user("di.mueller")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("class=\"subnav\""))));
+    }
+
     /** The anchor that carries {@code lang="de"} or {@code lang="en"} in the topbar. */
     private static String languageLink(String html, String language) {
         Matcher matcher = Pattern.compile("<a[^>]*lang=\"" + language + "\"[^>]*>").matcher(html);
@@ -188,17 +255,48 @@ class ShellRenderingIT {
         return matcher.group();
     }
 
+    /** The sign-out form of the topbar, including its hidden fields. */
+    private static String signOutForm(String html) {
+        Matcher matcher = Pattern.compile("<form[^>]*action=\"/logout\"[^>]*>.*?</form>", Pattern.DOTALL).matcher(html);
+
+        assertThat(matcher.find()).as("sign-out form").isTrue();
+        return matcher.group();
+    }
+
+    /**
+     * An authenticated login the way the OAuth2 client would hand it over: the OIDC
+     * principal as the authentication's principal, the registration id as authorized
+     * client.
+     */
+    private static Authentication oidcLogin(Map<String, Object> claims) {
+        Map<String, Object> idTokenClaims = new LinkedHashMap<>();
+        idTokenClaims.put("iss", ISSUER);
+        idTokenClaims.put("aud", List.of("dashboard"));
+        idTokenClaims.put("sub", SUBJECT);
+        idTokenClaims.putAll(claims);
+
+        OidcIdToken idToken = new OidcIdToken("id-token", Instant.now(), Instant.now().plusSeconds(300),
+                idTokenClaims);
+        OidcUser oidcUser = new DefaultOidcUser(List.of(new OidcUserAuthority(idToken, OidcUserInfo.builder()
+                .subject(SUBJECT).build())), idToken);
+        return new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(),
+                StubClientRegistrationRepository.REGISTRATION_ID);
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class PermitAllConfiguration {
 
-        /** Test-only chain in front of the real one: rendering without a login round-trip. */
+        /**
+         * Test-only chain in front of the real one: rendering without a login round-trip.
+         * CSRF stays enabled — the shell's sign-out form renders its token from the same
+         * machinery the production chain uses, so the rendering tests see the real markup.
+         */
         @Bean
         @Order(Ordered.HIGHEST_PRECEDENCE)
         SecurityFilterChain renderingTestSecurityFilterChain(HttpSecurity http) throws Exception {
             http
                     .securityMatcher("/**")
-                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .csrf(csrf -> csrf.disable());
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
             return http.build();
         }
     }

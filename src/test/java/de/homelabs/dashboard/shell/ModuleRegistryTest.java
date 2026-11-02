@@ -9,7 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The module registry is the shell's navigation contract: one descriptor per module,
- * rail order = list order, the REST base URL taken from the module properties.
+ * rail order = list order, the REST base URL taken from the module properties, and the
+ * active module resolved from the request path so the shell knows whose subnav to show.
  */
 class ModuleRegistryTest {
 
@@ -40,5 +41,36 @@ class ModuleRegistryTest {
     @Test
     void findsNoModuleForAnUnknownId() {
         assertThat(registry.find("hippocampus")).isEmpty();
+    }
+
+    @Test
+    void projectsDeclaresNoSubnavYet() {
+        assertThat(registry.find("projects").orElseThrow().subnav()).isEmpty();
+    }
+
+    @Test
+    void resolvesTheActiveModuleFromTheRequestPath() {
+        assertThat(registry.findByPath("/projects"))
+                .get()
+                .extracting(ModuleDescriptor::id)
+                .isEqualTo("projects");
+        assertThat(registry.findByPath("/projects/HP-1")).isPresent();
+        assertThat(registry.findByPath("/projects-archive")).isEmpty();
+        assertThat(registry.findByPath("/")).isEmpty();
+        assertThat(registry.findByPath(null)).isEmpty();
+    }
+
+    @Test
+    void keepsTheDeclaredSubnavOrderAndRejectsAnEmptyPlaceholder() {
+        ModuleDescriptor withSubnav = new ModuleDescriptor("projects", "module.projects.nav", "/projects",
+                PROJECTS_API,
+                List.of(new ModuleDescriptor.SubnavItem("module.projects.subnav.list", "/projects"),
+                        new ModuleDescriptor.SubnavItem("module.projects.subnav.new", "/projects/new")));
+        ModuleDescriptor withoutSubnav = new ModuleDescriptor("projects", "module.projects.nav", "/projects",
+                PROJECTS_API, null);
+
+        assertThat(withSubnav.subnav()).extracting(ModuleDescriptor.SubnavItem::labelKey)
+                .containsExactly("module.projects.subnav.list", "module.projects.subnav.new");
+        assertThat(withoutSubnav.subnav()).isEmpty();
     }
 }
