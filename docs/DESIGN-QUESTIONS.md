@@ -34,56 +34,58 @@ options if you see them>
 ---
 -->
 
-### Q1 — Project list: where do the labels come from? — OPEN
+### Q1 — Project list: where do the labels come from? — ANSWERED
 
-The list view is specified with four columns per project: reference, name, a
-status badge and the project's labels. The lean list answer of the projects API
-(`GET /api/projects`) carries `id`, `reference`, `name`, `status`, `owner_name`,
-`updated_at` and `excerpt` — no labels. Project labels exist only in the full
-record (`GET /api/projects/{idOrCode}`), which is the detail view's source.
+**A1 — Option 1 (backend): the lean project list answer gains the labels.**
 
-Options as the implementation sees them:
+Decision rationale (design session, 2026-11-02): labels are LEAN BY NATURE — a
+project carries at most a handful of label names, so adding them to the summary
+keeps the excerpt discipline intact (the discipline exists to keep lists light;
+two or three short strings per row do not threaten that). Option 2 is rejected
+as the exact counter-pattern: one full canonical record per row is N+1 calls
+AND a full-HTML transfer for a view defined as excerpt-only. Option 3 is
+rejected because the committed view content deliberately puts labels on the
+list (the daily overview reads labels before opening anything).
 
-1. **Backend.** Add the project's labels to the lean list answer. The list keeps
-   one call per page and stays lean; the dashboard changes not at all.
-2. **Dashboard, one full record per row.** Call the get endpoint for every row of
-   the list page and render only the label chips from it. N+1 calls per list
-   load, and full canonical content is transferred for a view that is meant to
-   carry excerpts only.
-3. **View change.** The list renders reference, name and status badge; labels
-   appear on the detail page, which already has them.
+Consequences:
 
-**Question:** which of the three is binding? If option 3, the list's required
-content changes with it.
+- The REST contract gains `labels` on the project lean summary — ADDITIVE, no
+  breaking change.
+- Recorded as the backend task **HP-12** in the tool; implemented + the
+  dashboard's fake-API ITs code against the NEW shape immediately; the adapter
+  and the gateway are NOT forced (their DTOs read the richer answer and
+  silently drop the new field per the existing Jackson behavior — mirroring it
+  there is a deliberate, separate decision, NOT wanted now: agents get labels
+  through the find filters, not extra summary weight).
+- The prod deploy of the backend change rides the next deployment moment
+  (latest-pull; no dedicated outage step).
 
-**Blocking?** yes — "lean list answer" and "labels rendered in the list" cannot
-both hold with today's REST shape.
+**Blocking?** resolved.
 
 ---
 
-### Q2 — Project detail: how is the work-package/task tree composed? — OPEN
+### Q2 — Project detail: how is the work-package/task tree composed? — ANSWERED
 
-The detail view renders the work packages in wire order with each package's
-tasks grouped underneath, tasks in wire order. The lean task answer
-(`GET /api/tasks?project=…`) carries `id`, `reference`, `title`, `status`,
-`sort_order`, `assignee_sub`, `assignee_name`, `due_date` and `excerpt` — no
-work-package membership, so a task cannot be attributed to a package from that
-answer.
+**A2 — Option 1 (backend): the lean work-item (task) answer gains the package
+membership — `work_package_id` + `work_package_reference`, nullable.**
 
-Options as the implementation sees them:
+Decision rationale: the tree is the detail view's main content; one work-package
+call + one task call per load (composition, not N+2 fan-out) is the honest BFF
+shape. The membership is a read-shape addition, not a missing backend
+capability, so it belongs with the backend contract.
 
-1. **Backend.** Add the group to the lean task answer (`work_package_id` /
-   `work_package_reference`). The dashboard then composes the tree from one
-   work-package call and one task call.
-2. **Dashboard composition.** One lean task call per work package
-   (`?project=…&wp=<reference>`) plus one project-wide lean call to recognise
-   the tasks that belong to no package — N+2 calls per detail load.
-3. **Flat rendering.** Work packages and tasks in one list, grouped by nothing;
-   no tree.
+Consequences:
 
-**Question:** which is binding? If option 2: where do ungrouped tasks render —
-as their own group, or not at all?
+- `null` membership = a task without a work package: it renders as its OWN
+  group, AFTER the packages (the domain allows package-less tasks; hiding them
+  would lie about the data).
+- The shared lean summary record gains the two nullable components (they are
+  null on work-package rows); ADDITIVE — no breaking change for existing
+  consumers.
+- THE DASHBOARD COMPOSES, IT DOES NOT RE-SORT: grouping by the ids, order
+  preserved as the wire delivers it (`sort_order asc, created_at, id`).
+- Same adapter consequence as A1: dropped silently until deliberately mirrored.
 
-**Blocking?** yes — the tree is the detail view's main content.
+**Blocking?** resolved.
 
 ---
