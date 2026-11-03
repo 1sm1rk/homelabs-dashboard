@@ -13,15 +13,83 @@
     <span class="chip" th:each="label : ${labels}" th:text="${label}">label</span>
 </span>
 
-<!-- One work-package or task row of the plan tree. Each editor lives in its own form and
-     sends exactly one field: the API's tri-state then falls out of the UI — absent means
-     unchanged, an empty assignee or due date clears, a sort order (1 = first) moves the
-     item. The row keeps a notice block of its own so a rejected write lands next to the
-     control that caused it, and the last cell carries nothing else. -->
+<!-- The header of the open project: reference, state, name, who created it, when it last
+     changed. It sits above every page inside the project — the detail itself and both
+     item pages — so the way back and the lifecycle never move between them. -->
+<header class="page__header" th:fragment="projectHeader">
+    <p class="page__meta">
+        <span class="mono muted" th:text="${project.reference}">WEB</span>
+        <span th:replace="~{projects/fragments :: badge(${project.statusKey}, ${project.statusClass})}"></span>
+        <span th:replace="~{projects/fragments :: chips(${project.labels})}"></span>
+    </p>
+    <h1 class="page__title" th:text="${project.name}">Project</h1>
+    <p class="muted">
+        <span th:text="#{projects.detail.owner}">Owner</span>
+        <span th:text="${project.ownerName}">name</span>
+        <span th:if="${project.updatedAt != null}">·</span>
+        <span th:if="${project.updatedAt != null}" th:text="#{projects.detail.updated}">Updated</span>
+        <time th:if="${project.updatedAt != null}"
+              th:text="${#temporals.format(project.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+    </p>
+    <!-- The explicit lifecycle moves. The API never takes a status as a PATCH field, so
+         each move is its own POST; archived is terminal and offers nothing. The plain
+         action is the no-script path, like everywhere else in the module. -->
+    <div class="actions" th:if="${project.status != 'archived'}">
+        <form th:if="${project.status == 'active'}"
+              th:with="action=@{/projects/{reference}/deactivate(reference=${project.reference})}"
+              th:action="${action}" method="post"
+              th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
+            <button class="button button--ghost" type="submit"
+                    th:text="#{projects.detail.deactivate}">Deactivate</button>
+        </form>
+        <form th:if="${project.status == 'deactivated'}"
+              th:with="action=@{/projects/{reference}/activate(reference=${project.reference})}"
+              th:action="${action}" method="post"
+              th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
+            <button class="button button--ghost" type="submit"
+                    th:text="#{projects.detail.activate}">Activate</button>
+        </form>
+        <form th:with="action=@{/projects/{reference}/archive(reference=${project.reference})}"
+              th:action="${action}" method="post"
+              th:attr="hx-post=${action}"
+              th:hx-confirm="#{projects.detail.archiveConfirm}"
+              hx-target="#main" hx-swap="innerHTML">
+            <button class="button button--danger" type="submit"
+                    th:text="#{projects.detail.archive}">Archive</button>
+        </form>
+    </div>
+    <!-- Archived stays readable and keeps its controls: a write the API refuses then
+         explains itself right here or at the control, instead of the UI guessing. -->
+    <p class="muted" th:if="${project.status == 'archived'}" th:text="#{projects.detail.readOnly}">Archived.</p>
+    <div class="field-error" id="project-notice" role="alert"></div>
+</header>
+
+<!-- The trail above an item page: the project, the work package a task belongs to, and
+     the open item. Every crumb above the open item leads back to the project's page —
+     the trail names where the reader is, the project is always the way back. -->
+<nav class="breadcrumb" th:fragment="breadcrumb" th:aria-label="#{projects.breadcrumb.label}">
+    <ol class="breadcrumb__list">
+        <li class="breadcrumb__item" th:each="crumb : ${breadcrumb.ancestors}">
+            <a th:href="@{${crumb.path}}" th:text="${crumb.label}">WEB</a>
+        </li>
+        <li class="breadcrumb__item breadcrumb__item--current" th:text="${breadcrumb.current}">WEB-1</li>
+    </ol>
+</nav>
+
+<!-- One work-package or task row of the plan tree. The reference and the title link into
+     the item's own page — a plain link, because an item page is a page. Each editor lives
+     in its own form and sends exactly one field: the API's tri-state then falls out of
+     the UI — absent means unchanged, an empty assignee or due date clears, a sort order
+     (1 = first) moves the item. The row keeps a notice block of its own so a rejected
+     write lands next to the control that caused it. -->
 <tr th:fragment="itemRow(item, rowClass, kind)" th:class="${rowClass}"
     th:with="patch=@{/projects/{reference}/{kind}/{item}(reference=${reference}, kind=${kind}, item=${item.reference})}">
-    <td class="mono tree__reference" th:text="${item.reference}">WEB-1</td>
-    <td class="tree__title" th:text="${item.title}">title</td>
+    <td class="mono tree__reference">
+        <a th:href="${patch}" th:text="${item.reference}">WEB-1</a>
+    </td>
+    <td class="tree__title">
+        <a th:href="${patch}" th:text="${item.title}">title</a>
+    </td>
     <td>
         <form class="inline-form" th:attr="hx-patch=${patch}" hx-target="#plan" hx-swap="outerHTML"
               hx-trigger="change">

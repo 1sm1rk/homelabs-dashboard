@@ -169,6 +169,10 @@ class ProjectsReadIT {
                 .as("a task without a work package renders after the packages")
                 .isLessThan(html.indexOf("Loose task"));
         assertThat(html).contains("Aufgaben ohne Arbeitspaket");
+        assertThat(html)
+                .as("every tree row links into the item's own page")
+                .contains("href=\"/projects/WEB/work-packages/WEB-7\"")
+                .contains("href=\"/projects/WEB/tasks/WEB-8\"");
     }
 
     @Test

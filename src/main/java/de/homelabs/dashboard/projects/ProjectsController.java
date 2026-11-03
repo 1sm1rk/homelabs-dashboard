@@ -1,6 +1,7 @@
 package de.homelabs.dashboard.projects;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,11 +24,13 @@ import org.springframework.web.client.RestClientResponseException;
 
 import de.homelabs.dashboard.projects.ProjectsClient.ItemPatch;
 import de.homelabs.dashboard.projects.ProjectsClient.ProjectTransition;
+import de.homelabs.dashboard.projects.ProjectsViews.ItemDetail;
+import de.homelabs.dashboard.projects.ProjectsViews.ProjectHeader;
 
 /**
  * The projects module: the lean project list, the project detail with its plan tree, the
- * comments, activity and attachments sections, and the mutation flows that write back
- * through the same REST contract.
+ * work-package and task pages the tree links into, the comments, activity and attachment
+ * sections, and the mutation flows that write back through the same REST contract.
  *
  * <p>Every route answers twice — as a full page for a link or a reload, and as the
  * fragment an htmx request swaps in place. The fragment is the same template: the full
@@ -63,6 +66,9 @@ public class ProjectsController {
 
     /** Selector prefix of a plan row's own notice block, followed by the item reference. */
     private static final String ITEM_NOTICE = "#item-notice-";
+
+    /** Selector prefix of an item editor's notice block, followed by the field it edits. */
+    private static final String EDIT_NOTICE = "#item-edit-notice-";
 
     private final ProjectsClient projects;
 
@@ -150,6 +156,183 @@ public class ProjectsController {
         return detail(reference, model, request);
     }
 
+    /**
+     * One work package's own page: its full record with the editors, the project header
+     * above it and the package's tasks in plan order below. A row of the plan tree links
+     * here with a plain link — an item page is a page, not a fragment swap.
+     */
+    @GetMapping("/{reference}/work-packages/{itemReference}")
+    public String workPackageDetail(@PathVariable String reference, @PathVariable String itemReference,
+            Model model) {
+        return workPackagePage(reference, itemReference, model, false);
+    }
+
+    /** One task's own page: the same record plus the select that moves it between packages. */
+    @GetMapping("/{reference}/tasks/{itemReference}")
+    public String taskDetail(@PathVariable String reference, @PathVariable String itemReference, Model model) {
+        return taskPage(reference, itemReference, model, false);
+    }
+
+    /**
+     * The title editor. A save that changes nothing is not a write — the API answers
+     * "nothing to change" to a no-op PATCH, which is a useful answer for an agent and
+     * noise for a reader pressing save twice — so an unchanged title re-renders only.
+     */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/title")
+    public String editWorkPackageTitle(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam String title, Model model, HttpServletRequest request) {
+        if (!title.strip().equals(projects.findWorkPackage(itemReference).title())) {
+            write(() -> projects.patchWorkPackage(itemReference, ItemPatch.title(title)), EDIT_NOTICE + "title");
+        }
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /**
+     * The description editor: canonical HTML, sent as {@code description_html} alone. The
+     * API refuses a body that carries both content shapes, and re-sending the derived
+     * plain text would flatten an item written as markup. An empty textarea empties it.
+     */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/description")
+    public String editWorkPackageDescription(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "description_html") String descriptionHtml, Model model,
+            HttpServletRequest request) {
+        if (!descriptionHtml.equals(emptyIfNull(projects.findWorkPackage(itemReference).descriptionHtml()))) {
+            write(() -> projects.patchWorkPackage(itemReference, ItemPatch.descriptionHtml(descriptionHtml)),
+                    EDIT_NOTICE + "description");
+        }
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /**
+     * The label editor: a comma-separated list that REPLACES the whole set, exactly like
+     * the API's own assignment semantics. An empty input is an empty set — the labels go.
+     */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/labels")
+    public String editWorkPackageLabels(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(defaultValue = "") String labels, Model model, HttpServletRequest request) {
+        write(() -> projects.patchWorkPackage(itemReference, ItemPatch.labels(names(labels))),
+                EDIT_NOTICE + "labels");
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The status editor of a work package: the lowercase wire value the select offers. */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/status")
+    public String editWorkPackageStatus(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(required = false) String status, Model model, HttpServletRequest request) {
+        write(() -> projects.patchWorkPackage(itemReference, ItemPatch.status(status)), EDIT_NOTICE + "status");
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The assignee editor: the stored subject; an empty input clears the assignment. */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/assignee")
+    public String editWorkPackageAssignee(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "assignee_sub", required = false) String assigneeSub, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchWorkPackage(itemReference, ItemPatch.assigneeSub(assigneeSub)),
+                EDIT_NOTICE + "assignee");
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The due-date editor: an ISO date, or empty to clear it. */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/due-date")
+    public String editWorkPackageDueDate(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "due_date", required = false) String dueDate, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchWorkPackage(itemReference, ItemPatch.dueDate(dueDate)),
+                EDIT_NOTICE + "due-date");
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The position editor: an integer from 1 up; the API has no "clear" for it. */
+    @PatchMapping("/{reference}/work-packages/{itemReference}/sort-order")
+    public String editWorkPackageSortOrder(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "sort_order", required = false) Integer sortOrder, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchWorkPackage(itemReference, ItemPatch.sortOrder(sortOrder)),
+                EDIT_NOTICE + "sort-order");
+        return workPackagePage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The title editor of a task — the same field, the same one-form-per-control shape. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/title")
+    public String editTaskTitle(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam String title, Model model, HttpServletRequest request) {
+        if (!title.strip().equals(projects.findTask(itemReference).title())) {
+            write(() -> projects.patchTask(itemReference, ItemPatch.title(title)), EDIT_NOTICE + "title");
+        }
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The description editor of a task: {@code description_html} alone, empty empties. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/description")
+    public String editTaskDescription(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "description_html") String descriptionHtml, Model model,
+            HttpServletRequest request) {
+        if (!descriptionHtml.equals(emptyIfNull(projects.findTask(itemReference).descriptionHtml()))) {
+            write(() -> projects.patchTask(itemReference, ItemPatch.descriptionHtml(descriptionHtml)),
+                    EDIT_NOTICE + "description");
+        }
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The label editor of a task: the whole set, replaced. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/labels")
+    public String editTaskLabels(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(defaultValue = "") String labels, Model model, HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.labels(names(labels))), EDIT_NOTICE + "labels");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The status editor of a task. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/status")
+    public String editTaskStatus(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(required = false) String status, Model model, HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.status(status)), EDIT_NOTICE + "status");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The assignee editor of a task. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/assignee")
+    public String editTaskAssignee(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "assignee_sub", required = false) String assigneeSub, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.assigneeSub(assigneeSub)),
+                EDIT_NOTICE + "assignee");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The due-date editor of a task. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/due-date")
+    public String editTaskDueDate(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "due_date", required = false) String dueDate, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.dueDate(dueDate)), EDIT_NOTICE + "due-date");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /** The position editor of a task. */
+    @PatchMapping("/{reference}/tasks/{itemReference}/sort-order")
+    public String editTaskSortOrder(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "sort_order", required = false) Integer sortOrder, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.sortOrder(sortOrder)), EDIT_NOTICE + "sort-order");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
+    /**
+     * The work-package select of a task detail: a reference moves the task into that
+     * package of its own project, an EMPTY value removes the grouping — the API reads a
+     * blank reference as "no group", which is the only way to ungroup a task.
+     */
+    @PatchMapping("/{reference}/tasks/{itemReference}/work-package")
+    public String editTaskWorkPackage(@PathVariable String reference, @PathVariable String itemReference,
+            @RequestParam(name = "work_package_id", defaultValue = "") String workPackageId, Model model,
+            HttpServletRequest request) {
+        write(() -> projects.patchTask(itemReference, ItemPatch.workPackageId(workPackageId)),
+                EDIT_NOTICE + "work-package");
+        return taskPage(reference, itemReference, model, HtmxRequest.isFragment(request));
+    }
+
     /** Creates a work package; the plan card comes back with the API's fresh order. */
     @PostMapping("/{reference}/work-packages")
     public String createWorkPackage(@PathVariable String reference, @RequestParam String title,
@@ -186,7 +369,7 @@ public class ProjectsController {
             @RequestParam(name = "sort_order", required = false) Integer sortOrder,
             Model model) {
         write(() -> projects.patchWorkPackage(itemReference,
-                new ItemPatch(status, assigneeSub, dueDate, sortOrder)), ITEM_NOTICE + itemReference);
+                ItemPatch.row(status, assigneeSub, dueDate, sortOrder)), ITEM_NOTICE + itemReference);
         return plan(reference, model);
     }
 
@@ -198,7 +381,7 @@ public class ProjectsController {
             @RequestParam(name = "due_date", required = false) String dueDate,
             @RequestParam(name = "sort_order", required = false) Integer sortOrder,
             Model model) {
-        write(() -> projects.patchTask(itemReference, new ItemPatch(status, assigneeSub, dueDate, sortOrder)),
+        write(() -> projects.patchTask(itemReference, ItemPatch.row(status, assigneeSub, dueDate, sortOrder)),
                 ITEM_NOTICE + itemReference);
         return plan(reference, model);
     }
@@ -286,6 +469,49 @@ public class ProjectsController {
         model.addAttribute("itemStatusOptions", ProjectsViews.ITEM_STATUS_OPTIONS);
     }
 
+    /**
+     * A work package's page: the full record, the project header around it and the tasks
+     * grouped under it in the plan order the API delivers. The task list is read from the
+     * project's own list and filtered by membership, so the order is the wire's — the
+     * dashboard composes, it does not re-sort.
+     */
+    private String workPackagePage(String projectReference, String itemReference, Model model, boolean fragment) {
+        ProjectRecord project = projects.findProject(projectReference);
+        WorkPackageRecord workPackage = projects.findWorkPackage(itemReference);
+        ItemDetail item = ProjectsViews.itemDetail(workPackage);
+        model.addAttribute("tasks", ProjectsViews.itemRows(projects.findTasks(project.shortCode()).stream()
+                .filter(task -> workPackage.id().equals(task.workPackageId()))
+                .toList()));
+        addItemModel(project, item, model);
+        return fragment ? "projects/item :: content" : "projects/item";
+    }
+
+    /**
+     * A task's page: the full record plus the project's packages, which the move select
+     * offers. {@code null} membership is a real state of the domain, so the select carries
+     * an explicit "no work package" choice instead of hiding the option.
+     */
+    private String taskPage(String projectReference, String itemReference, Model model, boolean fragment) {
+        ProjectRecord project = projects.findProject(projectReference);
+        ItemDetail item = ProjectsViews.itemDetail(projects.findTask(itemReference));
+        model.addAttribute("workPackages", ProjectsViews.itemRows(projects.findWorkPackages(project.shortCode())));
+        addItemModel(project, item, model);
+        return fragment ? "projects/item :: content" : "projects/item";
+    }
+
+    /**
+     * What every item page shares with the project detail: the header fragment's data,
+     * the reference the item links build on, the open item and the trail above it.
+     */
+    private void addItemModel(ProjectRecord project, ItemDetail item, Model model) {
+        ProjectHeader header = ProjectsViews.projectHeader(project);
+        model.addAttribute(REFERENCE, header.reference());
+        model.addAttribute("project", header);
+        model.addAttribute("item", item);
+        model.addAttribute("breadcrumb", ProjectsViews.breadcrumb(header, item));
+        model.addAttribute("itemStatusOptions", ProjectsViews.ITEM_STATUS_OPTIONS);
+    }
+
     private void addComments(Model model, String parent) {
         List<ProjectsViews.CommentRow> comments = ProjectsViews.commentRows(projects.findComments(parent));
         model.addAttribute("comments", comments);
@@ -327,6 +553,18 @@ public class ProjectsController {
      */
     private static String parent(String projectReference) {
         return "project:" + projectReference;
+    }
+
+    /** A comma-separated label input as the API's list: trimmed, empty entries dropped. */
+    private static List<String> names(String labels) {
+        if (labels == null) {
+            return List.of();
+        }
+        return Arrays.stream(labels.split(",")).map(String::strip).filter(name -> !name.isEmpty()).toList();
+    }
+
+    private static String emptyIfNull(String value) {
+        return value == null ? "" : value;
     }
 
     private static MediaType mediaType(String value) {

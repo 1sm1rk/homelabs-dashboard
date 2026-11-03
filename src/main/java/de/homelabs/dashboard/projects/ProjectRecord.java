@@ -27,11 +27,4 @@ public record ProjectRecord(
     public ProjectRecord {
         labels = labels == null ? List.of() : List.copyOf(labels);
     }
-
-    /** One label of the record; assignments travel by name, the id is provenance. */
-    public record LabelRecord(
-            @JsonProperty("id") UUID id,
-            @JsonProperty("name") String name,
-            @JsonProperty("color") String color) {
-    }
 }

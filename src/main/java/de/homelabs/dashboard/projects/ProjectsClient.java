@@ -23,11 +23,11 @@ import de.homelabs.dashboard.shell.ModuleRegistry;
  * rule — every call forwards the session's access token as Bearer.
  *
  * <p>Consumed endpoints are the read side the views need — the lean project list, the
- * full project record, the lean work-package and task lists, comments, activity,
- * attachment metadata and one attachment's bytes — plus the write routes behind the
- * same resources: create, the three explicit lifecycle moves, partial updates and the
- * comment form. The dashboard consumes that contract and never forks it; shapes the
- * views need beyond it belong to the backend.
+ * full project record, the full work-package and task records, the lean work-package and
+ * task lists, comments, activity, attachment metadata and one attachment's bytes — plus
+ * the write routes behind the same resources: create, the three explicit lifecycle moves,
+ * partial updates and the comment form. The dashboard consumes that contract and never
+ * forks it; shapes the views need beyond it belong to the backend.
  *
  * <p>Write bodies name their wire fields explicitly, like the read records, because the
  * API drops an unknown property silently: a misspelled field would be a no-op, not an
@@ -129,6 +129,22 @@ public class ProjectsClient {
                         .queryParam("include_inactive_projects", true)
                         .queryParam("limit", ITEM_LIMIT)
                         .build()), ITEM_SUMMARIES);
+    }
+
+    /** The full record of one work package, canonical HTML and labels included. */
+    WorkPackageRecord findWorkPackage(String reference) {
+        return http.get()
+                .uri(uri -> uri.path("/api/work-packages/{reference}").build(reference))
+                .retrieve()
+                .body(WorkPackageRecord.class);
+    }
+
+    /** The full record of one task, its work-package membership included. */
+    TaskRecord findTask(String reference) {
+        return http.get()
+                .uri(uri -> uri.path("/api/tasks/{reference}").build(reference))
+                .retrieve()
+                .body(TaskRecord.class);
     }
 
     /** The project's tasks in the same plan order, each carrying its package membership. */
@@ -316,17 +332,63 @@ public class ProjectsClient {
     }
 
     /**
-     * Body of the two item PATCH routes. Only the field the reader touched is sent:
+     * Body of the two item PATCH routes. Only the fields the reader touched are sent:
      * {@code null} means "unchanged", while an empty {@code assignee_sub} or
-     * {@code due_date} clears the field. {@code sort_order} has no clear state — the
-     * column is not nullable, so {@code null} always leaves it alone.
+     * {@code due_date} clears the field, and an empty {@code work_package_id} removes a
+     * task's grouping. {@code sort_order} has no clear state — the column is not
+     * nullable, so {@code null} always leaves it alone.
+     *
+     * <p>{@code description_html} is the ONLY content field the dashboard sends: the API
+     * refuses a body that carries both shapes, and re-sending the derived plain text
+     * would flatten an item written as markup. {@code labels} replaces the whole set.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record ItemPatch(
+            @JsonProperty("title") String title,
+            @JsonProperty("description_html") String descriptionHtml,
             @JsonProperty("status") String status,
             @JsonProperty("assignee_sub") String assigneeSub,
             @JsonProperty("due_date") String dueDate,
-            @JsonProperty("sort_order") Integer sortOrder) {
+            @JsonProperty("sort_order") Integer sortOrder,
+            @JsonProperty("labels") List<String> labels,
+            @JsonProperty("work_package_id") String workPackageId) {
+
+        /** The four fields of a plan-row editor, as the row forms submit them. */
+        static ItemPatch row(String status, String assigneeSub, String dueDate, Integer sortOrder) {
+            return new ItemPatch(null, null, status, assigneeSub, dueDate, sortOrder, null, null);
+        }
+
+        static ItemPatch title(String title) {
+            return new ItemPatch(title, null, null, null, null, null, null, null);
+        }
+
+        static ItemPatch descriptionHtml(String descriptionHtml) {
+            return new ItemPatch(null, descriptionHtml, null, null, null, null, null, null);
+        }
+
+        static ItemPatch status(String status) {
+            return new ItemPatch(null, null, status, null, null, null, null, null);
+        }
+
+        static ItemPatch assigneeSub(String assigneeSub) {
+            return new ItemPatch(null, null, null, assigneeSub, null, null, null, null);
+        }
+
+        static ItemPatch dueDate(String dueDate) {
+            return new ItemPatch(null, null, null, null, dueDate, null, null, null);
+        }
+
+        static ItemPatch sortOrder(Integer sortOrder) {
+            return new ItemPatch(null, null, null, null, null, sortOrder, null, null);
+        }
+
+        static ItemPatch labels(List<String> labels) {
+            return new ItemPatch(null, null, null, null, null, null, labels, null);
+        }
+
+        static ItemPatch workPackageId(String workPackageId) {
+            return new ItemPatch(null, null, null, null, null, null, null, workPackageId);
+        }
     }
 
     /** Bytes of one attachment with the response metadata the proxy forwards unchanged. */

@@ -3,53 +3,9 @@
       th:replace="~{layout :: page(title=${project.name}, content=~{::content})}">
 <body>
 <div class="page" th:fragment="content">
-    <header class="page__header">
-        <p class="page__meta">
-            <span class="mono muted" th:text="${project.reference}">WEB</span>
-            <span th:replace="~{projects/fragments :: badge(${project.statusKey}, ${project.statusClass})}"></span>
-            <span th:replace="~{projects/fragments :: chips(${project.labels})}"></span>
-        </p>
-        <h1 class="page__title" th:text="${project.name}">Project</h1>
-        <p class="muted">
-            <span th:text="#{projects.detail.owner}">Owner</span>
-            <span th:text="${project.ownerName}">name</span>
-            <span th:if="${project.updatedAt != null}">·</span>
-            <span th:if="${project.updatedAt != null}" th:text="#{projects.detail.updated}">Updated</span>
-            <time th:if="${project.updatedAt != null}"
-                  th:text="${#temporals.format(project.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
-        </p>
-        <!-- The explicit lifecycle moves. The API never takes a status as a PATCH field, so
-             each move is its own POST; archived is terminal and offers nothing. The plain
-             action is the no-script path, like everywhere else in the module. -->
-        <div class="actions" th:if="${project.status != 'archived'}">
-            <form th:if="${project.status == 'active'}"
-                  th:with="action=@{/projects/{reference}/deactivate(reference=${project.reference})}"
-                  th:action="${action}" method="post"
-                  th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
-                <button class="button button--ghost" type="submit"
-                        th:text="#{projects.detail.deactivate}">Deactivate</button>
-            </form>
-            <form th:if="${project.status == 'deactivated'}"
-                  th:with="action=@{/projects/{reference}/activate(reference=${project.reference})}"
-                  th:action="${action}" method="post"
-                  th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
-                <button class="button button--ghost" type="submit"
-                        th:text="#{projects.detail.activate}">Activate</button>
-            </form>
-            <form th:with="action=@{/projects/{reference}/archive(reference=${project.reference})}"
-                  th:action="${action}" method="post"
-                  th:attr="hx-post=${action}"
-                  th:hx-confirm="#{projects.detail.archiveConfirm}"
-                  hx-target="#main" hx-swap="innerHTML">
-                <button class="button button--danger" type="submit"
-                        th:text="#{projects.detail.archive}">Archive</button>
-            </form>
-        </div>
-        <!-- Archived stays readable and keeps its controls: a write the API refuses then
-             explains itself right here or at the row, instead of the UI guessing. -->
-        <p class="muted" th:if="${project.status == 'archived'}" th:text="#{projects.detail.readOnly}">Archived.</p>
-        <div class="field-error" id="project-notice" role="alert"></div>
-    </header>
+    <!-- The shared project header: the same fragment sits above both item pages, so the
+         reference, the state and the lifecycle are identical wherever the reader is. -->
+    <header th:replace="~{projects/fragments :: projectHeader}"></header>
 
     <!-- Canonical content. The backend sanitizes every description against its allowlist
          before it is stored, and the derived plain text stays available for lists; the

@@ -77,6 +77,33 @@ public final class ProjectsViews {
     public record ProjectTree(List<PackageNode> packages, List<ItemRow> ungroupedTasks) {
     }
 
+    /**
+     * The full record one item page renders. {@code kind} is the route segment the item's
+     * own links build on ({@code work-packages} or {@code tasks}); {@code status} is the
+     * wire value its editors submit, {@code statusKey} and {@code statusClass} its label
+     * and badge modifier. {@code workPackageReference} is always {@code null} on a work
+     * package — only a task carries a group.
+     */
+    public record ItemDetail(String kind, String reference, String title, String status, String statusKey,
+            String statusClass, String descriptionHtml, String assigneeSub, String assignee, LocalDate dueDate,
+            int seq, int sortOrder, Instant createdAt, Instant updatedAt, List<String> labels,
+            String workPackageReference) {
+
+        /** Route segment of a work package in the module's item pages. */
+        static final String WORK_PACKAGES = "work-packages";
+
+        /** Route segment of a task in the module's item pages. */
+        static final String TASKS = "tasks";
+    }
+
+    /** One crumb of a breadcrumb trail: its label and the path it leads back to. */
+    public record Crumb(String label, String path) {
+    }
+
+    /** The trail above an item page: its ancestors, then the item the page shows. */
+    public record Breadcrumb(List<Crumb> ancestors, String current) {
+    }
+
     /** One comment line. */
     public record CommentRow(String author, String content, Instant createdAt) {
     }
@@ -97,8 +124,40 @@ public final class ProjectsViews {
     static ProjectHeader projectHeader(ProjectRecord project) {
         return new ProjectHeader(project.shortCode(), project.name(), project.status(),
                 projectStatusKey(project.status()), projectStatusClass(project.status()), project.ownerName(),
-                project.updatedAt(), project.descriptionHtml(),
-                project.labels().stream().map(ProjectRecord.LabelRecord::name).toList());
+                project.updatedAt(), project.descriptionHtml(), labelNames(project.labels()));
+    }
+
+    /** The detail view of one work package; it carries no group of its own. */
+    static ItemDetail itemDetail(WorkPackageRecord item) {
+        return new ItemDetail(ItemDetail.WORK_PACKAGES, item.reference(), item.title(), item.status(),
+                itemStatusKey(item.status()), itemStatusClass(item.status()), item.descriptionHtml(),
+                item.assigneeSub(), firstPresent(item.assigneeName(), item.assigneeSub()), item.dueDate(),
+                item.seq(), item.sortOrder(), item.createdAt(), item.updatedAt(), labelNames(item.labels()), null);
+    }
+
+    /** The detail view of one task, its work-package reference included. */
+    static ItemDetail itemDetail(TaskRecord item) {
+        return new ItemDetail(ItemDetail.TASKS, item.reference(), item.title(), item.status(),
+                itemStatusKey(item.status()), itemStatusClass(item.status()), item.descriptionHtml(),
+                item.assigneeSub(), firstPresent(item.assigneeName(), item.assigneeSub()), item.dueDate(),
+                item.seq(), item.sortOrder(), item.createdAt(), item.updatedAt(), labelNames(item.labels()),
+                item.workPackageReference());
+    }
+
+    /**
+     * The breadcrumb above an item page: the project first, then — on a task page — the
+     * work package it is grouped into, then the item itself. Every crumb above the open
+     * item leads back to the project's own page; only the trail is per-item, the way back
+     * is always the project.
+     */
+    static Breadcrumb breadcrumb(ProjectHeader project, ItemDetail item) {
+        String projectPath = "/projects/" + project.reference();
+        List<Crumb> ancestors = new ArrayList<>();
+        ancestors.add(new Crumb(project.name(), projectPath));
+        if (item.workPackageReference() != null) {
+            ancestors.add(new Crumb(item.workPackageReference(), projectPath));
+        }
+        return new Breadcrumb(List.copyOf(ancestors), item.reference());
     }
 
     static List<ItemRow> itemRows(List<ItemSummary> items) {
@@ -155,6 +214,11 @@ public final class ProjectsViews {
         return new ItemRow(item.reference(), item.title(), item.status(), itemStatusKey(item.status()),
                 itemStatusClass(item.status()), item.assigneeSub(),
                 firstPresent(item.assigneeName(), item.assigneeSub()), item.dueDate(), item.sortOrder());
+    }
+
+    /** Label names in the API's order; the names are what an editor sends back. */
+    private static List<String> labelNames(List<LabelRecord> labels) {
+        return labels.stream().map(LabelRecord::name).toList();
     }
 
     /** Lifecycle status of a project as a message key; unknown values stay visible. */
