@@ -59,6 +59,16 @@ class ProjectsViewsTest {
     }
 
     @Test
+    void offersTheWireVocabularyInTheStatusEditorInTheApisOrder() {
+        assertThat(ProjectsViews.ITEM_STATUS_OPTIONS).extracting(ProjectsViews.StatusOption::value)
+                .as("a select that offered anything else would send a value the API rejects")
+                .containsExactly("todo", "in_progress", "blocked", "done", "cancelled");
+        assertThat(ProjectsViews.ITEM_STATUS_OPTIONS)
+                .allSatisfy(option -> assertThat(ProjectsViews.itemStatusKey(option.value()))
+                        .isEqualTo(option.labelKey()));
+    }
+
+    @Test
     void mapsEveryProjectStatusToAKeyAndABadgeModifier() {
         List<String> statuses = List.of("active", "deactivated", "archived");
 

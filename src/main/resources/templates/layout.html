@@ -7,7 +7,11 @@
     <link rel="stylesheet" th:href="@{/css/dashboard.css}" href="/css/dashboard.css">
     <script th:src="@{/js/htmx.min.js}" src="/js/htmx.min.js" defer></script>
 </head>
-<body>
+<!-- The page body carries the CSRF token once, as the htmx header block: every POST and
+     PATCH issued from markup inside it — forms, row controls, fragments swapped in later —
+     inherits the attribute, so no control repeats the token. Without a script-side
+     fallback the token would only cover plain form posts, not htmx swaps. -->
+<body th:attr="hx-headers=${csrfHeaders}">
 <div class="shell">
     <!-- The rail is rendered from the module registry: adding a module never edits
          this template. The rail label is a message key from the descriptor, so the

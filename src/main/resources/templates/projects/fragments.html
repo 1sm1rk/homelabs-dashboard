@@ -13,15 +13,70 @@
     <span class="chip" th:each="label : ${labels}" th:text="${label}">label</span>
 </span>
 
-<!-- One work-package or task row of the plan tree: reference, title, status badge,
-     assignee, due date and the item's position inside the project. -->
-<tr th:fragment="itemRow(item, rowClass)" th:class="${rowClass}">
+<!-- One work-package or task row of the plan tree. Each editor lives in its own form and
+     sends exactly one field: the API's tri-state then falls out of the UI — absent means
+     unchanged, an empty assignee or due date clears, a sort order (1 = first) moves the
+     item. The row keeps a notice block of its own so a rejected write lands next to the
+     control that caused it, and the last cell carries nothing else. -->
+<tr th:fragment="itemRow(item, rowClass, kind)" th:class="${rowClass}"
+    th:with="patch=@{/projects/{reference}/{kind}/{item}(reference=${reference}, kind=${kind}, item=${item.reference})}">
     <td class="mono tree__reference" th:text="${item.reference}">WEB-1</td>
     <td class="tree__title" th:text="${item.title}">title</td>
-    <td><span th:replace="~{projects/fragments :: badge(${item.statusKey}, ${item.statusClass})}"></span></td>
-    <td class="muted" th:text="${item.assignee} ?: #{projects.item.unassigned}">assignee</td>
-    <td class="mono" th:text="${item.dueDate} ?: '–'">2026-11-01</td>
-    <td class="mono muted" th:text="${item.sortOrder}">1</td>
+    <td>
+        <form class="inline-form" th:attr="hx-patch=${patch}" hx-target="#plan" hx-swap="outerHTML"
+              hx-trigger="change">
+            <select class="status-select" name="status" th:classappend="${item.statusClass}"
+                    th:aria-label="#{projects.table.status}">
+                <option th:each="option : ${itemStatusOptions}" th:value="${option.value}"
+                        th:selected="${option.value == item.status}" th:text="#{__${option.labelKey}__}">todo</option>
+            </select>
+        </form>
+    </td>
+    <td>
+        <form class="inline-form" th:attr="hx-patch=${patch}" hx-target="#plan" hx-swap="outerHTML"
+              hx-trigger="change">
+            <input class="inline-input inline-input--assignee" type="text" name="assignee_sub"
+                   th:value="${item.assigneeSub}" th:aria-label="#{projects.table.assignee}">
+        </form>
+        <span class="muted" th:text="${item.assignee} ?: #{projects.item.unassigned}">di.mueller</span>
+    </td>
+    <td>
+        <form class="inline-form" th:attr="hx-patch=${patch}" hx-target="#plan" hx-swap="outerHTML"
+              hx-trigger="change">
+            <input class="inline-input" type="date" name="due_date" th:value="${item.dueDate}"
+                   th:aria-label="#{projects.table.due}">
+        </form>
+    </td>
+    <td>
+        <form class="inline-form" th:attr="hx-patch=${patch}" hx-target="#plan" hx-swap="outerHTML"
+              hx-trigger="change">
+            <input class="inline-input inline-input--position" type="number" min="1" name="sort_order"
+                   th:value="${item.sortOrder}" th:aria-label="#{projects.table.position}">
+        </form>
+    </td>
+    <td class="tree__error">
+        <div class="field-error" th:id="|item-notice-${item.reference}|" role="alert"></div>
+    </td>
 </tr>
+
+<!-- A rejected write, as the API wrote it: the localized headline names the kind of
+     problem, the segments keep its own words, and a field message keeps the WIRE field
+     name next to it — that is the name a retry has to use. Suggestions of a short-code
+     collision render as the code strings themselves, so the reader can pick one. -->
+<div class="alert" th:fragment="problem">
+    <p th:text="#{__${headingKey}__}">The projects API rejected the request.</p>
+    <ul class="problem" th:if="${!#lists.isEmpty(problem.segments)}">
+        <li th:each="segment : ${problem.segments}">
+            <code class="problem__field" th:if="${segment.wireField != null}" th:text="${segment.wireField}">short_code</code>
+            <span th:text="${segment.text}">message</span>
+        </li>
+    </ul>
+    <div class="problem__suggestions" th:if="${!#lists.isEmpty(problem.suggestions)}">
+        <p th:text="#{projects.form.suggestions}">Taken. These are free:</p>
+        <ul class="problem">
+            <li th:each="suggestion : ${problem.suggestions}"><code th:text="${suggestion}">WEB2</code></li>
+        </ul>
+    </div>
+</div>
 </body>
 </html>

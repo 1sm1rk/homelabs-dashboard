@@ -26,7 +26,7 @@ import com.sun.net.httpserver.HttpServer;
 public final class FakeProjectsApi implements AutoCloseable {
 
     /** One recorded request, reduced to the parts the dashboard is responsible for. */
-    public record Call(String method, String path, String query, String authorization) {
+    public record Call(String method, String path, String query, String authorization, String body) {
     }
 
     private record Stub(int status, String contentType, byte[] body, Map<String, String> headers) {
@@ -99,9 +99,12 @@ public final class FakeProjectsApi implements AutoCloseable {
     private void handle(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
+        // The body is part of what the dashboard is responsible for: a misspelled wire
+        // field would be dropped by the API's Jackson without any error, so the tests
+        // assert the exact payload a mutation sent.
+        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         calls.add(new Call(method, path, exchange.getRequestURI().getQuery(),
-                exchange.getRequestHeaders().getFirst("Authorization")));
-        exchange.getRequestBody().readAllBytes();
+                exchange.getRequestHeaders().getFirst("Authorization"), body));
 
         Stub stub = stubs.get(method + " " + path);
         if (stub == null) {

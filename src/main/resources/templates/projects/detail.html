@@ -18,6 +18,37 @@
             <time th:if="${project.updatedAt != null}"
                   th:text="${#temporals.format(project.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
         </p>
+        <!-- The explicit lifecycle moves. The API never takes a status as a PATCH field, so
+             each move is its own POST; archived is terminal and offers nothing. The plain
+             action is the no-script path, like everywhere else in the module. -->
+        <div class="actions" th:if="${project.status != 'archived'}">
+            <form th:if="${project.status == 'active'}"
+                  th:with="action=@{/projects/{reference}/deactivate(reference=${project.reference})}"
+                  th:action="${action}" method="post"
+                  th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
+                <button class="button button--ghost" type="submit"
+                        th:text="#{projects.detail.deactivate}">Deactivate</button>
+            </form>
+            <form th:if="${project.status == 'deactivated'}"
+                  th:with="action=@{/projects/{reference}/activate(reference=${project.reference})}"
+                  th:action="${action}" method="post"
+                  th:attr="hx-post=${action}" hx-target="#main" hx-swap="innerHTML">
+                <button class="button button--ghost" type="submit"
+                        th:text="#{projects.detail.activate}">Activate</button>
+            </form>
+            <form th:with="action=@{/projects/{reference}/archive(reference=${project.reference})}"
+                  th:action="${action}" method="post"
+                  th:attr="hx-post=${action}"
+                  th:hx-confirm="#{projects.detail.archiveConfirm}"
+                  hx-target="#main" hx-swap="innerHTML">
+                <button class="button button--danger" type="submit"
+                        th:text="#{projects.detail.archive}">Archive</button>
+            </form>
+        </div>
+        <!-- Archived stays readable and keeps its controls: a write the API refuses then
+             explains itself right here or at the row, instead of the UI guessing. -->
+        <p class="muted" th:if="${project.status == 'archived'}" th:text="#{projects.detail.readOnly}">Archived.</p>
+        <div class="field-error" id="project-notice" role="alert"></div>
     </header>
 
     <!-- Canonical content. The backend sanitizes every description against its allowlist
@@ -27,46 +58,7 @@
         <div th:utext="${project.descriptionHtml}">description</div>
     </section>
 
-    <!-- The plan tree in the backend's plan order: work packages as the API delivers them,
-         the tasks grouped under their package in the same wire order, and the tasks
-         without a package as their own group after the packages. Nothing here is sorted:
-         the plan order belongs to the backend. -->
-    <section class="card">
-        <h2 class="card__title" th:text="#{projects.detail.tree}">Plan</h2>
-        <p class="empty" th:if="${#lists.isEmpty(tree.packages) and #lists.isEmpty(tree.ungroupedTasks)}"
-           th:text="#{projects.tree.empty}">No work packages yet.</p>
-        <table class="tree" th:if="${!#lists.isEmpty(tree.packages)}">
-            <thead>
-            <tr>
-                <th th:text="#{projects.table.reference}">Reference</th>
-                <th th:text="#{projects.table.title}">Title</th>
-                <th th:text="#{projects.table.status}">Status</th>
-                <th th:text="#{projects.table.assignee}">Assignee</th>
-                <th th:text="#{projects.table.due}">Due</th>
-                <th th:text="#{projects.table.position}">Position</th>
-            </tr>
-            </thead>
-            <tbody th:each="node : ${tree.packages}">
-            <tr th:replace="~{projects/fragments :: itemRow(${node.workPackage}, 'tree__package')}"></tr>
-            <th:block th:each="task : ${node.tasks}">
-                <tr th:replace="~{projects/fragments :: itemRow(${task}, 'tree__task')}"></tr>
-            </th:block>
-            <tr th:if="${#lists.isEmpty(node.tasks)}">
-                <td colspan="6" class="empty" th:text="#{projects.tree.noTasks}">No tasks in this work package.</td>
-            </tr>
-            </tbody>
-        </table>
-        <div class="tree__loose" th:if="${!#lists.isEmpty(tree.ungroupedTasks)}">
-            <h3 class="tree__loose-title" th:text="#{projects.tree.ungrouped}">Tasks without a work package</h3>
-            <table class="tree">
-                <tbody>
-                <th:block th:each="task : ${tree.ungroupedTasks}">
-                    <tr th:replace="~{projects/fragments :: itemRow(${task}, 'tree__task')}"></tr>
-                </th:block>
-                </tbody>
-            </table>
-        </div>
-    </section>
+    <section th:replace="~{projects/tree :: card}"></section>
 
     <!-- The three sections load with the page and each can refresh itself in place. -->
     <section th:replace="~{projects/comments :: section}"></section>

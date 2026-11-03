@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="de">
 <body>
-<!-- Comments of the open project, newest first as the API delivers them. Read-only in
-     this step: the comment form arrives with the mutation views. -->
+<!-- Comments of the open project, newest first as the API delivers them, plus the form
+     that adds one: the API wraps the plain text into canonical HTML, so the dashboard
+     sends the text as typed and never composes markup. -->
 <section class="card" id="comments" th:fragment="section">
     <div class="card__header">
         <h2 class="card__title" th:text="#{projects.comments.title}">Comments</h2>
@@ -21,6 +22,15 @@
         </li>
     </ul>
     <p class="empty" th:if="${#lists.isEmpty(comments)}" th:text="#{projects.comments.empty}">No comments yet.</p>
+    <form class="comment-form"
+          th:with="action=@{/projects/{reference}/comments(reference=${reference})}"
+          th:action="${action}" method="post"
+          th:attr="hx-post=${action}" hx-target="#comments" hx-swap="outerHTML">
+        <label for="new-comment-text" th:text="#{projects.comments.add}">Add a comment</label>
+        <textarea id="new-comment-text" name="text" required maxlength="4000" rows="3"></textarea>
+        <button class="button" type="submit" th:text="#{projects.comments.submit}">Save comment</button>
+        <div class="field-error" id="comments-notice" role="alert"></div>
+    </form>
 </section>
 </body>
 </html>

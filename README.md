@@ -17,8 +17,8 @@ Requires JDK 25 and Maven.
 
 - Run: `mvn spring-boot:run` — dev server on port 8094
 - Verify: `mvn clean verify` (unit tests, boot smoke test, shell rendering,
-  projects read views, sign-out and session-cookie integration tests; the module
-  ITs run a fake JDK-HttpServer projects API — no Docker, no database)
+  projects read and mutation flows, sign-out and session-cookie integration tests; the
+  module ITs run a fake JDK-HttpServer projects API — no Docker, no database)
 
 Deployment data comes from the environment; the values are mapped in
 `src/main/resources/application.yml`:
@@ -43,13 +43,21 @@ mvn spring-boot:run
 ## Module 1: projects
 
 `/projects` lists the projects as the backend's lean summaries (reference, name,
-status badge, labels), filtered by the REST's own `status` and `q` parameters.
-`/projects/{reference}` shows one project: canonical description, labels, the
-work-package/task tree in the backend's plan order, and the comment, activity and
-attachment sections. Attachment downloads go through the dashboard (`…/attachments/
-{id}/content`), which forwards the session's token and passes the bytes through — the
-browser never talks to the backend. Reads only: status transitions, inline edits and
-the create/comment forms are the next step.
+status badge, labels), filtered by the REST's own `status` and `q` parameters, and
+carries the create form — an empty short code is derived from the name, a taken one
+comes back as the API's own alternatives. `/projects/{reference}` shows one project:
+canonical description, labels, the work-package/task tree in the backend's plan order,
+and the comment, activity and attachment sections. The plan's rows edit themselves —
+status, assignee, due date and position are one control per request, so a PATCH sends
+exactly what was touched — and work packages, tasks and comments are created in place.
+Deactivate, activate and archive are the detail header's explicit moves; an archived
+project stays readable with its controls in place, and the API's refusal (409) shows up
+at the row or form that caused it. Every mutation answers with the region it changed,
+and every rejected write renders the API's own body, field names and suggestions
+included. Attachment downloads go through the dashboard (`…/attachments/{id}/content`),
+which forwards the session's token and passes the bytes through — the browser never
+talks to the backend. The CSRF token rides the page body's `hx-headers` block, so every
+htmx request carries it without a token per form.
 
 `GET /health` is the open liveness probe (no session needed). Every other
 route redirects to the realm login until a session exists — with the values

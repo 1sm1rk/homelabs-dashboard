@@ -28,19 +28,7 @@
         <button class="button" type="submit" th:text="#{projects.filter.apply}">Filter</button>
     </form>
 
-    <div class="card card--table">
-        <table class="list">
-            <thead>
-            <tr>
-                <th th:text="#{projects.table.reference}">Reference</th>
-                <th th:text="#{projects.table.project}">Project</th>
-                <th th:text="#{projects.table.status}">Status</th>
-                <th th:text="#{projects.table.labels}">Labels</th>
-            </tr>
-            </thead>
-            <tbody id="project-rows" th:replace="~{projects/rows :: rows}"></tbody>
-        </table>
-    </div>
+    <div id="project-panel" th:replace="~{projects/panel :: panel}"></div>
 </section>
 </body>
 </html>

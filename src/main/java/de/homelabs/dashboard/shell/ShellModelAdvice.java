@@ -8,13 +8,15 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
  * Feeds the layout fragments on every rendered page: the rail entries from the module
  * registry, the subnav of the module the route belongs to, the signed-in identity for
- * the topbar and the locale state of the language switch.
+ * the topbar, the locale state of the language switch and the CSRF token every htmx
+ * request carries.
  *
  * <p>Global rather than per-controller because module pages and their htmx fragments
  * both render through the same layout — the shell must not depend on which module is
@@ -29,10 +31,30 @@ public class ShellModelAdvice {
     /** Fallback claim for realms that only send the full name. */
     static final String NAME_CLAIM = "name";
 
+    /** Request attribute the CSRF filter puts the session's token under. */
+    static final String CSRF_ATTRIBUTE = "_csrf";
+
     private final ModuleRegistry registry;
 
     public ShellModelAdvice(ModuleRegistry registry) {
         this.registry = registry;
+    }
+
+    /**
+     * The CSRF token as the {@code hx-headers} JSON of the page body: the token's own
+     * header name and a value the security chain accepts, so every htmx POST and PATCH
+     * carries it without a token of its own — the attribute is inherited from
+     * {@code <body>} into every fragment swapped inside it.
+     *
+     * <p>{@code null} when the request has no token (no security chain, no session): the
+     * attribute is then left out entirely instead of rendering an empty header.
+     */
+    @ModelAttribute("csrfHeaders")
+    public String csrfHeaders(HttpServletRequest request) {
+        if (!(request.getAttribute(CSRF_ATTRIBUTE) instanceof CsrfToken token) || token.getToken() == null) {
+            return null;
+        }
+        return "{\"" + token.getHeaderName() + "\":\"" + token.getToken() + "\"}";
     }
 
     @ModelAttribute("modules")

@@ -740,3 +740,146 @@ textarea {
     font-size: var(--text-sm);
     overflow-wrap: anywhere;
 }
+
+/* --------------------------------------------------------------------------
+   Mutation affordances: lifecycle actions, inline editors, form notices
+   -------------------------------------------------------------------------- */
+
+/* The lifecycle moves of the detail header: a row of plain buttons, one form each. */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.actions form {
+    margin: 0;
+}
+
+/* A move that ends the project for good: the accent stays out of it. */
+.button--danger {
+    border-color: var(--badge-danger-text);
+    background: transparent;
+    color: var(--badge-danger-text);
+}
+
+.button--danger:hover,
+.button--danger:focus-visible {
+    background: var(--badge-danger-bg);
+    filter: none;
+}
+
+/* A create block below a list or a plan: separated from the rows it feeds. */
+.create {
+    margin: var(--space-4) 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.create__title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-2);
+}
+
+/* A create form that is itself a card keeps its own padding, no divider. */
+.create.card {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.hint {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+/* Inline editors of a plan row: the same controls as the forms, sized for a cell. */
+.inline-form {
+    margin: 0;
+}
+
+.inline-input,
+.status-select {
+    width: auto;
+    max-width: 100%;
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    border-radius: var(--radius-sm);
+}
+
+.inline-input--assignee {
+    width: 14ch;
+}
+
+.inline-input--position {
+    width: 6ch;
+}
+
+/* The status editor keeps the badge vocabulary: the modifier colours the closed select. */
+.status-select {
+    border-color: transparent;
+    font-weight: 600;
+}
+
+/* A rejected write: quiet until it carries something, then the API's words. */
+.field-error {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--badge-danger-text);
+    overflow-wrap: anywhere;
+}
+
+.field-error:not(:empty) {
+    margin-top: var(--space-2);
+}
+
+/* The notice column of a plan row: no padding while empty, so the row stays a row. */
+.tree__error {
+    padding: 0;
+    width: 0;
+}
+
+/* The segments of an error body: one line per message, the wire field name as a code. */
+.problem {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.problem__field {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    margin-right: var(--space-1);
+}
+
+.problem__suggestions {
+    font-size: var(--text-sm);
+}
+
+.problem__suggestions code {
+    font-family: var(--font-mono);
+}
+
+/* The comment form closes the section it belongs to. */
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.comment-form textarea {
+    min-height: 4.5rem;
+}
+
+.comment-form .button {
+    align-self: flex-start;
+}

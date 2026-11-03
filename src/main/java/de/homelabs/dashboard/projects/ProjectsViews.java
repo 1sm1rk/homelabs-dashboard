@@ -32,7 +32,18 @@ public final class ProjectsViews {
             new StatusOption("deactivated", "status.project.deactivated"),
             new StatusOption("archived", "status.project.archived"));
 
-    /** One choice of the status filter: the wire value and the key of its label. */
+    /**
+     * The item statuses the row editors offer, in the API's order: the same five lowercase
+     * wire values the items carry, so a select can never send a value the API rejects.
+     */
+    static final List<StatusOption> ITEM_STATUS_OPTIONS = List.of(
+            new StatusOption("todo", "status.item.todo"),
+            new StatusOption("in_progress", "status.item.in_progress"),
+            new StatusOption("blocked", "status.item.blocked"),
+            new StatusOption("done", "status.item.done"),
+            new StatusOption("cancelled", "status.item.cancelled"));
+
+    /** One choice of a status filter or editor: the wire value and the key of its label. */
     public record StatusOption(String value, String labelKey) {
     }
 
@@ -40,14 +51,22 @@ public final class ProjectsViews {
     public record ProjectRow(String reference, String name, String statusKey, String statusClass, List<String> labels) {
     }
 
-    /** The detail header: identity, lifecycle and labels of the open project. */
-    public record ProjectHeader(String reference, String name, String statusKey, String statusClass,
+    /**
+     * The detail header: identity, lifecycle and labels of the open project. {@code status}
+     * is the wire value the header decides its lifecycle moves from; {@code statusKey} and
+     * {@code statusClass} are its label and badge modifier.
+     */
+    public record ProjectHeader(String reference, String name, String status, String statusKey, String statusClass,
             String ownerName, Instant updatedAt, String descriptionHtml, List<String> labels) {
     }
 
-    /** One work-package or task row; {@code assignee} already resolves the fallback. */
-    public record ItemRow(String reference, String title, String statusKey, String statusClass,
-            String assignee, LocalDate dueDate, int sortOrder) {
+    /**
+     * One work-package or task row. {@code status} is the wire value the editor submits
+     * back, {@code statusKey} its label; {@code assigneeSub} is the value the API stores
+     * (what an edit writes), {@code assignee} the display name a reader recognizes.
+     */
+    public record ItemRow(String reference, String title, String status, String statusKey, String statusClass,
+            String assigneeSub, String assignee, LocalDate dueDate, int sortOrder) {
     }
 
     /** One work package with the tasks grouped under it, in wire order. */
@@ -76,9 +95,9 @@ public final class ProjectsViews {
     }
 
     static ProjectHeader projectHeader(ProjectRecord project) {
-        return new ProjectHeader(project.shortCode(), project.name(), projectStatusKey(project.status()),
-                projectStatusClass(project.status()), project.ownerName(), project.updatedAt(),
-                project.descriptionHtml(),
+        return new ProjectHeader(project.shortCode(), project.name(), project.status(),
+                projectStatusKey(project.status()), projectStatusClass(project.status()), project.ownerName(),
+                project.updatedAt(), project.descriptionHtml(),
                 project.labels().stream().map(ProjectRecord.LabelRecord::name).toList());
     }
 
@@ -133,9 +152,9 @@ public final class ProjectsViews {
     }
 
     private static ItemRow itemRow(ItemSummary item) {
-        return new ItemRow(item.reference(), item.title(), itemStatusKey(item.status()),
-                itemStatusClass(item.status()), firstPresent(item.assigneeName(), item.assigneeSub()),
-                item.dueDate(), item.sortOrder());
+        return new ItemRow(item.reference(), item.title(), item.status(), itemStatusKey(item.status()),
+                itemStatusClass(item.status()), item.assigneeSub(),
+                firstPresent(item.assigneeName(), item.assigneeSub()), item.dueDate(), item.sortOrder());
     }
 
     /** Lifecycle status of a project as a message key; unknown values stay visible. */

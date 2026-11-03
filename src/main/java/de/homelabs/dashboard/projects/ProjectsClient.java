@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -18,10 +22,18 @@ import de.homelabs.dashboard.shell.ModuleRegistry;
  * The module's single door to the projects REST API: one thin client, one base URL, one
  * rule — every call forwards the session's access token as Bearer.
  *
- * <p>Consumed endpoints are exactly the read side the views need: the lean project list,
- * the full project record, the lean work-package and task lists, comments, activity,
- * attachment metadata and one attachment's bytes. The dashboard consumes that contract
- * and never forks it; shapes the views need beyond it belong to the backend.
+ * <p>Consumed endpoints are the read side the views need — the lean project list, the
+ * full project record, the lean work-package and task lists, comments, activity,
+ * attachment metadata and one attachment's bytes — plus the write routes behind the
+ * same resources: create, the three explicit lifecycle moves, partial updates and the
+ * comment form. The dashboard consumes that contract and never forks it; shapes the
+ * views need beyond it belong to the backend.
+ *
+ * <p>Write bodies name their wire fields explicitly, like the read records, because the
+ * API drops an unknown property silently: a misspelled field would be a no-op, not an
+ * error. {@code null} means "leave unchanged" on every partial update, an empty string
+ * clears a nullable field, and {@link ItemPatch}'s absent fields stay absent — the
+ * API's tri-state, carried by the browser's per-field forms.
  *
  * <p>The token is read per call (not at construction): the session can end between two
  * requests, and the interceptor is the one place where that decision is made.
@@ -178,8 +190,143 @@ public class ProjectsClient {
         return body == null ? List.of() : body;
     }
 
+    /** Creates a project; an absent short code is derived from the name by the API. */
+    void createProject(String name, String shortCode, String description) {
+        http.post()
+                .uri(uri -> uri.path("/api/projects").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ProjectCreate(name, blankToNull(shortCode), blankToNull(description)))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /**
+     * One of the explicit lifecycle moves. Status is never a PATCH field of the API:
+     * {@code deactivate}, {@code activate} and {@code archive} are their own operations,
+     * and {@code archived} answers 409 to every later write of the subtree.
+     */
+    void transitionProject(String reference, ProjectTransition transition) {
+        http.post()
+                .uri(uri -> uri.path("/api/projects/{reference}/{transition}")
+                        .build(reference, transition.name()))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Creates a work package inside the project; it takes the project's next reference. */
+    void createWorkPackage(String projectReference, String title, String assigneeSub, String dueDate) {
+        http.post()
+                .uri(uri -> uri.path("/api/projects/{reference}/work-packages").build(projectReference))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new WorkPackageCreate(title, blankToNull(assigneeSub), blankToNull(dueDate)))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Creates a task of the project, optionally grouped into one of its work packages. */
+    void createTask(String projectReference, String title, String workPackageReference, String assigneeSub,
+            String dueDate) {
+        http.post()
+                .uri(uri -> uri.path("/api/tasks").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new TaskCreate(title, projectReference, blankToNull(workPackageReference),
+                        blankToNull(assigneeSub), blankToNull(dueDate)))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Partial update of one work package; {@code null} fields stay unchanged. */
+    void patchWorkPackage(String reference, ItemPatch patch) {
+        patch("/api/work-packages/{reference}", reference, patch);
+    }
+
+    /** Partial update of one task; {@code null} fields stay unchanged. */
+    void patchTask(String reference, ItemPatch patch) {
+        patch("/api/tasks/{reference}", reference, patch);
+    }
+
+    /** Adds a plain-text comment to the entity the typed {@code parent} names. */
+    void createComment(String parent, String text) {
+        http.post()
+                .uri(uri -> uri.path("/api/comments").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new CommentCreate(parent, text))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private void patch(String path, String reference, ItemPatch patch) {
+        http.patch()
+                .uri(uri -> uri.path(path).build(reference))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(patch)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     private static Optional<String> present(String value) {
         return value == null || value.isBlank() ? Optional.empty() : Optional.of(value.trim());
+    }
+
+    /**
+     * An empty form field on a create means "not set", exactly like an absent one — the
+     * API trims it to nothing either way, so the body leaves it out instead of shipping a
+     * blank. On a partial update the empty string is meaningful (it clears), so the
+     * {@link ItemPatch} path passes it through untouched.
+     */
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    /** The API's lifecycle moves; the constants are the path segments of the routes. */
+    enum ProjectTransition {
+        deactivate, activate, archive
+    }
+
+    /** Body of {@code POST /api/projects}. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record ProjectCreate(
+            @JsonProperty("name") String name,
+            @JsonProperty("short_code") String shortCode,
+            @JsonProperty("description") String description) {
+    }
+
+    /** Body of {@code POST /api/projects/{idOrCode}/work-packages}. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record WorkPackageCreate(
+            @JsonProperty("title") String title,
+            @JsonProperty("assignee_sub") String assigneeSub,
+            @JsonProperty("due_date") String dueDate) {
+    }
+
+    /** Body of {@code POST /api/tasks}; the project is the body's, the grouping is optional. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record TaskCreate(
+            @JsonProperty("title") String title,
+            @JsonProperty("project") String project,
+            @JsonProperty("work_package_id") String workPackageId,
+            @JsonProperty("assignee_sub") String assigneeSub,
+            @JsonProperty("due_date") String dueDate) {
+    }
+
+    /** Body of {@code POST /api/comments}. */
+    record CommentCreate(
+            @JsonProperty("parent") String parent,
+            @JsonProperty("text") String text) {
+    }
+
+    /**
+     * Body of the two item PATCH routes. Only the field the reader touched is sent:
+     * {@code null} means "unchanged", while an empty {@code assignee_sub} or
+     * {@code due_date} clears the field. {@code sort_order} has no clear state — the
+     * column is not nullable, so {@code null} always leaves it alone.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record ItemPatch(
+            @JsonProperty("status") String status,
+            @JsonProperty("assignee_sub") String assigneeSub,
+            @JsonProperty("due_date") String dueDate,
+            @JsonProperty("sort_order") Integer sortOrder) {
     }
 
     /** Bytes of one attachment with the response metadata the proxy forwards unchanged. */

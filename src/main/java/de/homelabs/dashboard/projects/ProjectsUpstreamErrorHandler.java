@@ -22,8 +22,11 @@ import tools.jackson.databind.ObjectMapper;
  *       round-trip, because only a fresh session can fix that.</li>
  *   <li>404 — a localized not-found notice; the reference the reader typed may simply not
  *       exist.</li>
- *   <li>400 / 409 — the backend's own message rendered inline, verbatim: field problems
- *       name the wire field and a read-only conflict explains itself.</li>
+ *   <li>400 / 409 on a read — the backend's own message rendered inline, verbatim: field
+ *       problems name the wire field and a read-only conflict explains itself.</li>
+ *   <li>400 / 409 on a MUTATION — the same body rendered at the form that caused it
+ *       ({@link ProjectsRejection}), so the reader retries with the API's own suggestions
+ *       or field names.</li>
  *   <li>anything else, and an unreachable backend — a localized upstream notice with the
  *       technical message next to it.</li>
  * </ul>
@@ -37,6 +40,9 @@ class ProjectsUpstreamErrorHandler {
     private static final String VIEW = "projects/error";
 
     private static final String FRAGMENT = VIEW + " :: notice";
+
+    /** The inline block a rejected mutation renders into its form or row. */
+    private static final String PROBLEM = "projects/fragments :: problem";
 
     private final ObjectMapper objectMapper;
 
@@ -58,6 +64,22 @@ class ProjectsUpstreamErrorHandler {
             default -> "projects.error.upstream";
         };
         return notice(headingKey, upstreamMessage(exception), request, response);
+    }
+
+    /**
+     * A mutation the API refused: the body stays where the reader worked. The swap is
+     * retargeted to that block because the request's own target is the region a successful
+     * mutation replaces.
+     */
+    @ExceptionHandler(ProjectsRejection.class)
+    ModelAndView handleRejection(ProjectsRejection rejection, HttpServletResponse response) {
+        ModelAndView view = new ModelAndView(PROBLEM);
+        view.addObject("problem", ProjectsProblem.parse(rejection.body(), objectMapper));
+        view.addObject("headingKey", rejection.status() == HttpStatus.CONFLICT.value()
+                ? "projects.error.conflict" : "projects.error.badRequest");
+        response.setHeader("HX-Retarget", rejection.retarget());
+        response.setHeader("HX-Reswap", "innerHTML");
+        return view;
     }
 
     @ExceptionHandler(ResourceAccessException.class)

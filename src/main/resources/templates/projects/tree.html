@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- The plan: work packages as the API delivers them, the tasks grouped under their
+     package in the same wire order, and the tasks without a package as their own group
+     after the packages. Nothing here is sorted — the plan order belongs to the backend.
+     Every write of the plan answers with this whole card, because a reposition (sort
+     order, a new item, a regrouped task) is only visible in a fresh read of both lists.
+     A work package line renders with kind 'work-packages', a task line with 'tasks': that
+     segment decides which PATCH route the row's editors post to. -->
+<section class="card" id="plan" th:fragment="card">
+    <h2 class="card__title" th:text="#{projects.detail.tree}">Work packages and tasks</h2>
+    <p class="empty" th:if="${#lists.isEmpty(tree.packages) and #lists.isEmpty(tree.ungroupedTasks)}"
+       th:text="#{projects.tree.empty}">No work packages yet.</p>
+    <table class="tree" th:if="${!#lists.isEmpty(tree.packages)}">
+        <thead>
+        <tr>
+            <th th:text="#{projects.table.reference}">Reference</th>
+            <th th:text="#{projects.table.title}">Title</th>
+            <th th:text="#{projects.table.status}">Status</th>
+            <th th:text="#{projects.table.assignee}">Assignee</th>
+            <th th:text="#{projects.table.due}">Due</th>
+            <th th:text="#{projects.table.position}">Position</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody th:each="node : ${tree.packages}">
+        <tr th:replace="~{projects/fragments :: itemRow(${node.workPackage}, 'tree__package', 'work-packages')}"></tr>
+        <th:block th:each="task : ${node.tasks}">
+            <tr th:replace="~{projects/fragments :: itemRow(${task}, 'tree__task', 'tasks')}"></tr>
+        </th:block>
+        <tr th:if="${#lists.isEmpty(node.tasks)}">
+            <td colspan="7" class="empty" th:text="#{projects.tree.noTasks}">No tasks in this work package.</td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="tree__loose" th:if="${!#lists.isEmpty(tree.ungroupedTasks)}">
+        <h3 class="tree__loose-title" th:text="#{projects.tree.ungrouped}">Tasks without a work package</h3>
+        <table class="tree">
+            <tbody>
+            <th:block th:each="task : ${tree.ungroupedTasks}">
+                <tr th:replace="~{projects/fragments :: itemRow(${task}, 'tree__task', 'tasks')}"></tr>
+            </th:block>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create forms of the two levels. Both answer with the card, so they come back empty
+         and the new item shows up where the API placed it. The plain action is the
+         no-script path: the same form posts to the same route and lands on the full page. -->
+    <form class="create"
+          th:with="action=@{/projects/{reference}/work-packages(reference=${reference})}"
+          th:action="${action}" method="post"
+          th:attr="hx-post=${action}" hx-target="#plan" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+        <h3 class="create__title" th:text="#{projects.tree.newWorkPackage}">New work package</h3>
+        <div class="filters">
+            <div class="filters__field">
+                <label for="new-work-package-title" th:text="#{projects.table.title}">Title</label>
+                <input id="new-work-package-title" type="text" name="title" required maxlength="200">
+            </div>
+            <div class="filters__field">
+                <label for="new-work-package-assignee" th:text="#{projects.table.assignee}">Assigned to</label>
+                <input id="new-work-package-assignee" type="text" name="assignee_sub">
+            </div>
+            <div class="filters__field">
+                <label for="new-work-package-due" th:text="#{projects.table.due}">Due</label>
+                <input id="new-work-package-due" type="date" name="due_date">
+            </div>
+            <button class="button" type="submit" th:text="#{projects.tree.create}">Create</button>
+        </div>
+        <div class="field-error" id="create-work-package-notice" role="alert"></div>
+    </form>
+
+    <form class="create"
+          th:with="action=@{/projects/{reference}/tasks(reference=${reference})}"
+          th:action="${action}" method="post"
+          th:attr="hx-post=${action}" hx-target="#plan" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+        <h3 class="create__title" th:text="#{projects.tree.newTask}">New task</h3>
+        <div class="filters">
+            <div class="filters__field">
+                <label for="new-task-title" th:text="#{projects.table.title}">Title</label>
+                <input id="new-task-title" type="text" name="title" required maxlength="200">
+            </div>
+            <div class="filters__field">
+                <label for="new-task-work-package" th:text="#{projects.tree.workPackage}">Work package</label>
+                <select id="new-task-work-package" name="work_package_id">
+                    <option value="" th:text="#{projects.tree.noPackage}">No work package</option>
+                    <option th:each="node : ${tree.packages}" th:value="${node.workPackage.reference}"
+                            th:text="|${node.workPackage.reference} · ${node.workPackage.title}|">WEB-1</option>
+                </select>
+            </div>
+            <div class="filters__field">
+                <label for="new-task-assignee" th:text="#{projects.table.assignee}">Assigned to</label>
+                <input id="new-task-assignee" type="text" name="assignee_sub">
+            </div>
+            <div class="filters__field">
+                <label for="new-task-due" th:text="#{projects.table.due}">Due</label>
+                <input id="new-task-due" type="date" name="due_date">
+            </div>
+            <button class="button" type="submit" th:text="#{projects.tree.create}">Create</button>
+        </div>
+        <div class="field-error" id="create-task-notice" role="alert"></div>
+    </form>
+</section>
+</body>
+</html>

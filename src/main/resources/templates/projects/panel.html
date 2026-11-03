@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<body>
+<!-- The list page's working panel: the create form and the lean rows. A successful create
+     answers with this whole panel, so the form comes back empty and the rows come back as a
+     fresh read of the filters the page shows — the API's answer to the create carries the
+     record, the list's excerpt and order are the list's own. -->
+<div id="project-panel" th:fragment="panel">
+    <!-- The plain action is the no-script path: the same form posts to the same route and
+         lands on the full page. htmx takes over when it is there. -->
+    <form class="card create"
+          th:with="action=@{/projects(status=${statusFilter}, q=${queryFilter})}"
+          th:action="${action}" method="post"
+          th:attr="hx-post=${action}" hx-target="#project-panel" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+        <h2 class="card__title" th:text="#{projects.create.title}">New project</h2>
+        <div class="filters">
+            <div class="filters__field">
+                <label for="new-project-name" th:text="#{projects.create.name}">Name</label>
+                <input id="new-project-name" type="text" name="name" required maxlength="200">
+            </div>
+            <div class="filters__field">
+                <label for="new-project-short-code" th:text="#{projects.create.shortCode}">Short code</label>
+                <input id="new-project-short-code" type="text" name="short_code" maxlength="6"
+                       pattern="[A-Za-z0-9]{2,6}">
+            </div>
+            <button class="button" type="submit" th:text="#{projects.create.submit}">Create project</button>
+        </div>
+        <div class="filters__field">
+            <label for="new-project-description" th:text="#{projects.create.description}">Description</label>
+            <textarea id="new-project-description" name="description" rows="3"></textarea>
+        </div>
+        <p class="hint" th:text="#{projects.create.hint}">Leave the short code empty…</p>
+        <!-- The API's answer to a rejected create lands here: its own words, its own
+             suggestions, right below the fields that caused them. -->
+        <div class="field-error" id="create-project-notice" role="alert"></div>
+    </form>
+
+    <div class="card card--table">
+        <table class="list">
+            <thead>
+            <tr>
+                <th th:text="#{projects.table.reference}">Reference</th>
+                <th th:text="#{projects.table.project}">Project</th>
+                <th th:text="#{projects.table.status}">Status</th>
+                <th th:text="#{projects.table.labels}">Labels</th>
+            </tr>
+            </thead>
+            <tbody id="project-rows" th:replace="~{projects/rows :: rows}"></tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
