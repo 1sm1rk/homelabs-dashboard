@@ -199,6 +199,24 @@ class ProjectsItemIT {
     }
 
     @Test
+    void answersAHandMadeUrlForAnItemOfAnotherProjectWithTheNotFoundNotice() throws Exception {
+        // A task of another project, addressed under WEB's path: the API answers its own
+        // record, the page composition refuses the mix instead of rendering one project's
+        // header over another project's task.
+        API.json("GET", "/api/projects/WEB", 200, project("active"));
+        API.json("GET", "/api/tasks/WEB-2", 200, task("in_progress", "OPS"));
+
+        mockMvc.perform(authenticated(get("/projects/WEB/tasks/WEB-2")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Dieser Eintrag gibt es nicht (mehr).")))
+                .andExpect(content().string(not(containsString("<p>task description</p>"))));
+
+        assertThat(API.calls()).as("the mismatch stops after the two reads")
+                .hasSize(2)
+                .allSatisfy(call -> assertThat(call.authorization()).isEqualTo("Bearer " + TOKEN));
+    }
+
+    @Test
     void rendersTheProjectHeaderOnTheProjectPageAndBothItemPages() throws Exception {
         stubDetail();
         stubWorkPackagePage();
@@ -395,7 +413,7 @@ class ProjectsItemIT {
 
         mockMvc.perform(authenticated(get("/projects/WEB/work-packages/WEB-9")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Dieses Projekt gibt es nicht")))
+                .andExpect(content().string(containsString("Dieser Eintrag gibt es nicht")))
                 .andExpect(content().string(containsString("no work package WEB-9")));
     }
 
@@ -501,14 +519,18 @@ class ProjectsItemIT {
     }
 
     private static String task(String status) {
+        return task(status, "WEB");
+    }
+
+    private static String task(String status, String projectShortCode) {
         return """
-                {"id":"%s","reference":"WEB-2","project_id":"%s","project_short_code":"WEB",
+                {"id":"%s","reference":"WEB-2","project_id":"%s","project_short_code":"%s",
                  "work_package_id":"%s","work_package_reference":"WEB-1",
                  "title":"A task","description_html":"<p>task description</p>",
                  "description_text":"task description","status":"%s",
                  "assignee_sub":null,"assignee_name":null,"due_date":null,"seq":2,"sort_order":3,
                  "created_at":"2026-11-02T10:00:00Z","updated_at":"2026-11-03T09:00:00Z","labels":[]}
-                """.formatted(TASK_ID, PROJECT_ID, PACKAGE_ID, status);
+                """.formatted(TASK_ID, PROJECT_ID, projectShortCode, PACKAGE_ID, status);
     }
 
     private static String leanPackage(String reference, String title, int sortOrder) {

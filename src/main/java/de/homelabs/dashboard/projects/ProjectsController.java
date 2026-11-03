@@ -478,6 +478,9 @@ public class ProjectsController {
     private String workPackagePage(String projectReference, String itemReference, Model model, boolean fragment) {
         ProjectRecord project = projects.findProject(projectReference);
         WorkPackageRecord workPackage = projects.findWorkPackage(itemReference);
+        if (!projectReference.equalsIgnoreCase(workPackage.projectShortCode())) {
+            return mismatchedUrl(model);
+        }
         ItemDetail item = ProjectsViews.itemDetail(workPackage);
         model.addAttribute("tasks", ProjectsViews.itemRows(projects.findTasks(project.shortCode()).stream()
                 .filter(task -> workPackage.id().equals(task.workPackageId()))
@@ -493,10 +496,31 @@ public class ProjectsController {
      */
     private String taskPage(String projectReference, String itemReference, Model model, boolean fragment) {
         ProjectRecord project = projects.findProject(projectReference);
-        ItemDetail item = ProjectsViews.itemDetail(projects.findTask(itemReference));
+        TaskRecord task = projects.findTask(itemReference);
+        if (!projectReference.equalsIgnoreCase(task.projectShortCode())) {
+            return mismatchedUrl(model);
+        }
+        ItemDetail item = ProjectsViews.itemDetail(task);
         model.addAttribute("workPackages", ProjectsViews.itemRows(projects.findWorkPackages(project.shortCode())));
         addItemModel(project, item, model);
         return fragment ? "projects/item :: content" : "projects/item";
+    }
+
+    /**
+     * What every item page shares with the project detail: the header fragment's data,
+     * the reference the item links build on, the open item and the trail above it.
+     */
+    /**
+     * A hand-made URL naming an item that belongs to a different project: addressed as
+     * THIS project, the resource effectively does not exist — the same notice an upstream
+     * 404 renders, without inventing an HTTP exchange. The API addresses records by their
+     * own reference, so only this page composition sees the path's project and the item's
+     * project disagree; every other route reads through one project at a time.
+     */
+    private String mismatchedUrl(Model model) {
+        model.addAttribute("headingKey", ProjectsUpstreamErrorHandler.NOT_FOUND_KEY);
+        model.addAttribute("detail", null);
+        return ProjectsUpstreamErrorHandler.ERROR_VIEW;
     }
 
     /**

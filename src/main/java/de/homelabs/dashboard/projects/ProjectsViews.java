@@ -146,16 +146,16 @@ public final class ProjectsViews {
 
     /**
      * The breadcrumb above an item page: the project first, then — on a task page — the
-     * work package it is grouped into, then the item itself. Every crumb above the open
-     * item leads back to the project's own page; only the trail is per-item, the way back
-     * is always the project.
+     * work package it is grouped into, then the item itself. The way back is always the
+     * project; the work-package crumb reaches the package's own page.
      */
     static Breadcrumb breadcrumb(ProjectHeader project, ItemDetail item) {
         String projectPath = "/projects/" + project.reference();
         List<Crumb> ancestors = new ArrayList<>();
         ancestors.add(new Crumb(project.name(), projectPath));
         if (item.workPackageReference() != null) {
-            ancestors.add(new Crumb(item.workPackageReference(), projectPath));
+            ancestors.add(new Crumb(item.workPackageReference(),
+                    projectPath + "/" + ItemDetail.WORK_PACKAGES + "/" + item.workPackageReference()));
         }
         return new Breadcrumb(List.copyOf(ancestors), item.reference());
     }

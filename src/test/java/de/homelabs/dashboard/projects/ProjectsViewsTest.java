@@ -146,8 +146,8 @@ class ProjectsViewsTest {
                 .as("the task trail names the work package it belongs to")
                 .containsExactly("homelabs dashboard", "WEB-1");
         assertThat(taskTrail.ancestors()).extracting(ProjectsViews.Crumb::path)
-                .as("every crumb above the open item leads back to the project")
-                .containsOnly("/projects/WEB");
+                .as("the project crumb leads back to the project, the package crumb to its own page")
+                .containsExactly("/projects/WEB", "/projects/WEB/work-packages/WEB-1");
         assertThat(taskTrail.current()).isEqualTo("WEB-2");
     }
 

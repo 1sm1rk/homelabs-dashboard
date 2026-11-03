@@ -246,7 +246,7 @@ class ProjectsReadIT {
 
         mockMvc.perform(authenticatedGet("/projects/OPS"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Dieses Projekt gibt es nicht")))
+                .andExpect(content().string(containsString("Dieser Eintrag gibt es nicht")))
                 .andExpect(content().string(containsString("no project OPS")));
     }
 
