@@ -35,6 +35,11 @@ homelabs:
 
 server:
   port: 8094
+  # Trust the proxy's X-Forwarded-* headers so OAuth callback URLs compose as
+  # https://dashboard.homelabs.de behind the TLS edge (Caddy sets them on
+  # reverse_proxy). Headers only when present: a direct dev run on 8094 is
+  # unaffected.
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:
