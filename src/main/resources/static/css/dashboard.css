@@ -746,11 +746,15 @@ textarea {
     width: 0;
 }
 
-/* Inline editors of a plan row: the same controls as the forms, sized for a cell. */
+/* Inline editors of a plan row: the same controls as the forms, sized for a cell.
+   The element prefix keeps the cascade even: input.inline-input ties the
+   input[type=…] base rules' specificity and sits later in the file, so a row
+   cell stays compact instead of inheriting the form width of 100%. */
 .inline-form {
     margin: 0;
 }
 
+input.inline-input,
 .inline-input,
 .status-select {
     width: auto;
@@ -761,11 +765,11 @@ textarea {
     border-radius: var(--radius-sm);
 }
 
-.inline-input--assignee {
+input.inline-input--assignee {
     width: 14ch;
 }
 
-.inline-input--position {
+input.inline-input--position {
     width: 6ch;
 }
 
