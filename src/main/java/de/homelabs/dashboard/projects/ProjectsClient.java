@@ -79,9 +79,14 @@ public class ProjectsClient {
     private final RestClient http;
 
     ProjectsClient(ModuleRegistry registry, AccessTokenProvider accessTokens) {
+        // The descriptor's REST base URL is optional in the registry (a module may render
+        // no backend data), but THIS module cannot run without one: the client refuses to
+        // start instead of failing on the first call.
         URI apiBaseUrl = registry.find(MODULE_ID)
                 .orElseThrow(() -> new IllegalStateException("module '" + MODULE_ID + "' is not registered"))
-                .apiBaseUrl();
+                .apiBaseUrl()
+                .orElseThrow(() -> new IllegalStateException(
+                        "module '" + MODULE_ID + "' declares no REST base URL"));
         this.http = RestClient.builder()
                 .baseUrl(apiBaseUrl.toString())
                 .requestInterceptor((request, body, execution) -> {

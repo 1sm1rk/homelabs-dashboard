@@ -58,10 +58,34 @@ class DashboardBootIT {
     }
 
     @Test
+    void redirectsTheDesignGuideToTheLogin() throws Exception {
+        for (String path : new String[] { "/design", "/design/components" }) {
+            HttpResponse<String> response = get(path);
+
+            assertThat(response.statusCode()).as("status of %s", path).isEqualTo(302);
+            assertThat(response.headers().firstValue("Location"))
+                    .get()
+                    .asString()
+                    .as("redirect of %s", path)
+                    .contains("/oauth2/authorization/" + StubClientRegistrationRepository.REGISTRATION_ID);
+        }
+    }
+
+    @Test
     void wiresTheProjectsModuleFromTheConfiguredApiUrl() {
         ModuleDescriptor projects = registry.find("projects").orElseThrow();
 
-        assertThat(projects.apiBaseUrl()).isEqualTo(URI.create("http://localhost:8093"));
+        assertThat(projects.apiBaseUrl()).contains(URI.create("http://localhost:8093"));
+    }
+
+    @Test
+    void registersTheDesignGuideWithoutABackend() {
+        ModuleDescriptor design = registry.find("design").orElseThrow();
+
+        assertThat(design.basePath()).isEqualTo("/design");
+        assertThat(design.apiBaseUrl()).isEmpty();
+        assertThat(design.subnav()).extracting(ModuleDescriptor.SubnavItem::path)
+                .containsExactly("/design", "/design/components");
     }
 
     private HttpResponse<String> get(String path) throws Exception {

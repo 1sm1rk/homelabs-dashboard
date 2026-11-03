@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de"
+      th:replace="~{layout :: page(title=#{design.components.title}, content=~{::content})}">
+<body>
+<!-- The catalog half of the design guide: every pattern of the running UI, rendered with
+     the markup of the running UI. Parameterized patterns are not copied here — the page
+     calls the module's own fragments (badge, chips, breadcrumb, projectHeader, itemRow,
+     problem), so a change there shows up here with no second version to keep in step. The
+     page's own structure is left in place for the patterns that live inline in a template
+     (form controls, the record list, cards, buttons); these carry the same classes and the
+     same expressions. The specimens are inert: htmx is disabled inside them and no form
+     here names a route, so clicking one writes nothing. -->
+<div class="page" th:fragment="content">
+    <header class="page__header">
+        <p class="page__meta">
+            <span class="mono muted">/design/components</span>
+        </p>
+        <h1 class="page__title" th:text="#{design.components.heading}">Components</h1>
+        <p class="page__lead" th:text="#{design.components.lead}">Every pattern, rendered live.</p>
+        <p class="muted" th:text="#{design.components.inert}">Inert specimens, no route behind them.</p>
+    </header>
+
+    <!-- Page header: title, lead and the muted meta line of a page. -->
+    <section class="card" id="page-header">
+        <h2 class="card__title" th:text="#{design.components.pageHeader}">Page header</h2>
+        <p class="muted" th:text="#{design.components.pageHeader.note}">Title and lead.</p>
+        <div class="specimen">
+            <header class="page__header">
+                <p class="page__meta">
+                    <span class="mono muted">homelabs</span>
+                </p>
+                <h1 class="page__title" th:text="#{page.overview.heading}">homelabs dashboard</h1>
+                <p class="page__lead" th:text="#{page.overview.lead}">One surface.</p>
+            </header>
+        </div>
+    </section>
+
+    <!-- Project header: the shared fragment above every page inside a project. Shown in its
+         archived state, where the lifecycle buttons give way to the read-only notice. -->
+    <section class="card" id="project-header">
+        <h2 class="card__title" th:text="#{design.components.projectHeader}">Project header</h2>
+        <p class="muted" th:text="#{design.components.projectHeader.note}">Reference, state, name, provenance.</p>
+        <div class="specimen" hx-disable>
+            <header th:replace="~{projects/fragments :: projectHeader}"></header>
+        </div>
+    </section>
+
+    <!-- Breadcrumb: the trail of an item page, every crumb above the item leading back. -->
+    <section class="card" id="breadcrumb">
+        <h2 class="card__title" th:text="#{design.components.breadcrumb}">Breadcrumb</h2>
+        <p class="muted" th:text="#{design.components.breadcrumb.note}">Project first, open item last.</p>
+        <div class="specimen">
+            <nav th:replace="~{projects/fragments :: breadcrumb}"></nav>
+        </div>
+    </section>
+
+    <!-- Status badges: one fragment, one message key plus one modifier per state. Both
+         vocabularies are listed — the lifecycle of a project and the status of an item —
+         plus the neutral fallback of a value the dashboard does not know. -->
+    <section class="card" id="badges">
+        <h2 class="card__title" th:text="#{design.components.badges}">Status badges</h2>
+        <p class="muted" th:text="#{design.components.badges.note}">Text from a status key, colour from a modifier.</p>
+
+        <h3 class="create__title" th:text="#{design.components.badges.project}">Project status</h3>
+        <div class="specimen">
+            <p class="page__meta">
+                <th:block th:each="badge : ${projectBadges}">
+                    <span th:replace="~{projects/fragments :: badge(${badge.labelKey}, ${badge.modifier})}"></span>
+                </th:block>
+            </p>
+            <p class="mono muted">.badge--active · .badge--warning · .badge--muted</p>
+        </div>
+
+        <h3 class="create__title" th:text="#{design.components.badges.item}">Item status</h3>
+        <div class="specimen">
+            <p class="page__meta">
+                <th:block th:each="badge : ${itemBadges}">
+                    <span th:replace="~{projects/fragments :: badge(${badge.labelKey}, ${badge.modifier})}"></span>
+                </th:block>
+                <span th:replace="~{projects/fragments :: badge(${unknownBadge.labelKey}, ${unknownBadge.modifier})}"></span>
+            </p>
+            <p class="mono muted">.badge · .badge--active · .badge--danger · .badge--done · .badge--muted</p>
+        </div>
+    </section>
+
+    <!-- Label chips: backend data next to a badge, never a second badge. A label set that
+         is empty renders no row at all. -->
+    <section class="card" id="chips">
+        <h2 class="card__title" th:text="#{design.components.chips}">Label chips</h2>
+        <p class="muted" th:text="#{design.components.chips.note}">Label names are data, never translated; an empty set renders nothing.</p>
+        <div class="specimen">
+            <span th:replace="~{projects/fragments :: chips(${sampleLabels})}"></span>
+            <p class="mono muted">.chips · .chip</p>
+        </div>
+    </section>
+
+    <!-- Cards: the surface a section sits on, with the header row that carries a title and
+         an action. .card--table drops the padding because the table owns it. -->
+    <section class="card" id="cards">
+        <h2 class="card__title" th:text="#{design.components.cards}">Cards</h2>
+        <p class="muted" th:text="#{design.components.cards.note}">One surface per section, optional header row.</p>
+        <div class="specimen">
+            <section class="card">
+                <div class="card__header">
+                    <h2 class="card__title" th:text="#{design.sample.title}">Example title</h2>
+                    <button type="button" class="button button--ghost" th:text="#{projects.section.refresh}">Refresh</button>
+                </div>
+                <p class="muted" th:text="#{design.sample.text}">Quiet example text.</p>
+            </section>
+            <p class="mono muted">.card · .card__header · .card__title · .card--table</p>
+        </div>
+    </section>
+
+    <!-- Rows: the lean project rows of the list and the editable rows of the plan. The plan
+         rows carry their real controls — the editors write to the row's own PATCH route in
+         the module, which is why the specimen disables htmx inside itself. -->
+    <section class="card" id="rows">
+        <h2 class="card__title" th:text="#{design.components.rows}">Rows</h2>
+        <p class="muted" th:text="#{design.components.rows.note}">Reference and title link; the state is a badge or a select.</p>
+
+        <h3 class="create__title" th:text="#{design.components.rows.list}">Project rows (lean)</h3>
+        <div class="card card--table">
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{projects.table.reference}">Reference</th>
+                    <th th:text="#{projects.table.project}">Project</th>
+                    <th th:text="#{projects.table.status}">Status</th>
+                    <th th:text="#{projects.table.labels}">Labels</th>
+                </tr>
+                </thead>
+                <tbody th:replace="~{projects/rows :: rows}"></tbody>
+            </table>
+        </div>
+
+        <h3 class="create__title" th:text="#{design.components.rows.plan}">Plan rows (editable)</h3>
+        <div class="specimen" hx-disable>
+            <table class="tree">
+                <thead>
+                <tr>
+                    <th th:text="#{projects.table.reference}">Reference</th>
+                    <th th:text="#{projects.table.title}">Title</th>
+                    <th th:text="#{projects.table.status}">Status</th>
+                    <th th:text="#{projects.table.assignee}">Assignee</th>
+                    <th th:text="#{projects.table.due}">Due</th>
+                    <th th:text="#{projects.table.position}">Position</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:replace="~{projects/fragments :: itemRow(${samplePackage}, 'tree__package', 'work-packages')}"></tr>
+                <tr th:replace="~{projects/fragments :: itemRow(${sampleTask}, 'tree__task', 'tasks')}"></tr>
+                <tr>
+                    <td colspan="7" class="empty" th:text="#{projects.tree.noTasks}">No tasks in this work package.</td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="mono muted">.list · .tree · .tree__package · .tree__task · .status-select · .inline-input</p>
+        </div>
+    </section>
+
+    <!-- The record: a definition list, one line per field, never a table — the fields are
+         labels, not a dataset. -->
+    <section class="card" id="record">
+        <h2 class="card__title" th:text="#{design.components.record}">Record</h2>
+        <p class="muted" th:text="#{design.components.record.note}">Term left, value right, mono for machine-readable values.</p>
+        <div class="specimen">
+            <dl class="record">
+                <dt th:text="#{projects.table.assignee}">Assigned to</dt>
+                <dd>
+                    <span class="mono" th:if="${item.assigneeSub != null}" th:text="${item.assigneeSub}">8f2a1c44</span>
+                    <span th:text="${item.assignee} ?: #{projects.item.unassigned}">di.mueller</span>
+                </dd>
+                <dt th:text="#{projects.table.due}">Due</dt>
+                <dd>
+                    <time th:if="${item.dueDate != null}" th:text="${item.dueDate}">2026-11-20</time>
+                    <span class="muted" th:if="${item.dueDate == null}" th:text="#{projects.item.unset}">—</span>
+                </dd>
+                <dt th:text="#{projects.item.seq}">Sequence</dt>
+                <dd class="mono" th:text="${item.seq}">7</dd>
+                <dt th:text="#{projects.table.position}">Position</dt>
+                <dd class="mono" th:text="${item.sortOrder}">2</dd>
+                <dt th:text="#{projects.tree.workPackage}">Work package</dt>
+                <dd>
+                    <a class="mono" th:if="${item.workPackageReference != null}"
+                       th:href="@{/projects/{reference}/work-packages/{itemReference}(reference=${reference}, itemReference=${item.workPackageReference})}"
+                       th:text="${item.workPackageReference}">WEB-1</a>
+                    <span class="muted" th:if="${item.workPackageReference == null}"
+                          th:text="#{projects.tree.noPackage}">No work package</span>
+                </dd>
+                <dt th:text="#{projects.item.created}">Created</dt>
+                <dd class="muted">
+                    <time th:if="${item.createdAt != null}"
+                          th:text="${#temporals.format(item.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+                </dd>
+                <dt th:text="#{projects.detail.updated}">Last changed</dt>
+                <dd class="muted">
+                    <time th:if="${item.updatedAt != null}"
+                          th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-11-03 09:00</time>
+                </dd>
+            </dl>
+            <p class="mono muted">.record</p>
+        </div>
+    </section>
+
+    <!-- Forms: label above control, the filter row as the compact variant, the editor grid
+         for one form per field. A rejected field keeps its notice block under the control.
+         The specimens name no route: in the module every form carries hx-patch/hx-post to
+         its own route plus its notice block. -->
+    <section class="card" id="forms">
+        <h2 class="card__title" th:text="#{design.components.forms}">Forms</h2>
+        <p class="muted" th:text="#{design.components.forms.note}">One form per field in the editors; the route stays with the page.</p>
+
+        <h3 class="create__title" th:text="#{design.components.forms.filters}">Filter row</h3>
+        <div class="specimen">
+            <form class="filters" method="get">
+                <div class="filters__field">
+                    <label for="design-filter-status" th:text="#{projects.filter.status}">Status</label>
+                    <select id="design-filter-status" name="status">
+                        <option value="" th:text="#{projects.filter.statusAll}">all</option>
+                        <option th:each="option : ${statusOptions}" th:value="${option.value}"
+                                th:text="#{__${option.labelKey}__}">active</option>
+                    </select>
+                </div>
+                <div class="filters__field">
+                    <label for="design-filter-query" th:text="#{projects.filter.query}">Search</label>
+                    <input id="design-filter-query" type="search" name="q">
+                </div>
+                <button class="button" type="submit" th:text="#{projects.filter.apply}">Filter</button>
+            </form>
+            <p class="mono muted">.filters · .filters__field</p>
+        </div>
+
+        <h3 class="create__title" th:text="#{design.components.forms.editors}">Editor grid</h3>
+        <div class="specimen">
+            <div class="editors">
+                <form class="editor editor--wide" method="get">
+                    <label for="design-edit-title" th:text="#{projects.table.title}">Title</label>
+                    <div class="editor__row">
+                        <input id="design-edit-title" type="text" name="title" maxlength="200"
+                               th:value="${item.title}">
+                        <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                    </div>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor" method="get">
+                    <label for="design-edit-status" th:text="#{projects.table.status}">Status</label>
+                    <select id="design-edit-status" name="status">
+                        <option th:each="option : ${itemStatusOptions}" th:value="${option.value}"
+                                th:selected="${option.value == item.status}"
+                                th:text="#{__${option.labelKey}__}">todo</option>
+                    </select>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor" method="get">
+                    <label for="design-edit-assignee" th:text="#{projects.table.assignee}">Assigned to</label>
+                    <input id="design-edit-assignee" type="text" name="assignee_sub" th:value="${item.assigneeSub}">
+                    <p class="hint" th:text="#{projects.item.assigneeHint}">Empty clears the assignment.</p>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor" method="get">
+                    <label for="design-edit-due-date" th:text="#{projects.table.due}">Due</label>
+                    <input id="design-edit-due-date" type="date" name="due_date" th:value="${item.dueDate}">
+                    <p class="hint" th:text="#{projects.item.dueHint}">Empty clears the due date.</p>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor" method="get">
+                    <label for="design-edit-sort-order" th:text="#{projects.table.position}">Position</label>
+                    <input id="design-edit-sort-order" type="number" min="1" name="sort_order"
+                           th:value="${item.sortOrder}">
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor" method="get">
+                    <label for="design-edit-work-package" th:text="#{projects.tree.workPackage}">Work package</label>
+                    <select id="design-edit-work-package" name="work_package_id">
+                        <option value="" th:selected="${item.workPackageReference == null}"
+                                th:text="#{projects.tree.noPackage}">No work package</option>
+                        <option th:each="node : ${workPackages}" th:value="${node.reference}"
+                                th:selected="${node.reference == item.workPackageReference}"
+                                th:text="|${node.reference} · ${node.title}|">WEB-1</option>
+                    </select>
+                    <p class="hint" th:text="#{projects.item.moveHint}">The empty choice removes the grouping.</p>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor editor--wide" method="get">
+                    <label for="design-edit-description" th:text="#{projects.create.description}">Description</label>
+                    <textarea id="design-edit-description" name="description_html" rows="8"
+                              th:text="${item.descriptionHtml}"></textarea>
+                    <p class="hint" th:text="#{projects.item.descriptionHint}">Canonical HTML.</p>
+                    <div class="editor__row">
+                        <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                    </div>
+                    <div class="field-error" role="alert"></div>
+                </form>
+
+                <form class="editor editor--wide" method="get">
+                    <label for="design-edit-labels" th:text="#{projects.table.labels}">Labels</label>
+                    <div class="editor__row">
+                        <input id="design-edit-labels" type="text" name="labels"
+                               th:value="${#strings.listJoin(item.labels, ', ')}">
+                        <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                    </div>
+                    <p class="hint" th:text="#{projects.item.labelsHint}">Comma separated; replaces the whole set.</p>
+                    <div class="field-error" role="alert"></div>
+                </form>
+            </div>
+            <p class="mono muted">.editors · .editor · .editor--wide · .editor__row · .hint · .field-error</p>
+        </div>
+    </section>
+
+    <!-- Buttons: the plain action, the quiet second action, the destructive move and a link
+         that is styled as an action. -->
+    <section class="card" id="buttons">
+        <h2 class="card__title" th:text="#{design.components.buttons}">Buttons</h2>
+        <p class="muted" th:text="#{design.components.buttons.note}">One class, three intents; a link can carry the same class.</p>
+        <div class="specimen">
+            <p class="actions">
+                <button type="button" class="button" th:text="#{projects.tree.create}">Create</button>
+                <code class="mono muted">.button</code>
+            </p>
+            <p class="actions">
+                <button type="button" class="button button--ghost" th:text="#{projects.section.refresh}">Refresh</button>
+                <code class="mono muted">.button--ghost</code>
+            </p>
+            <p class="actions">
+                <button type="button" class="button button--danger" th:text="#{projects.detail.archive}">Archive</button>
+                <code class="mono muted">.button--danger</code>
+            </p>
+            <p class="actions">
+                <a class="button button--ghost" th:href="@{/design}" th:text="#{projects.error.back}">Back</a>
+                <code class="mono muted">.button on an anchor</code>
+            </p>
+        </div>
+    </section>
+
+    <!-- Alerts and notices: the headline of a failed backend answer with the backend's own
+         detail, a rejected write with the API's field messages and suggestions, and the
+         inline notice under a single control. -->
+    <section class="card" id="alerts">
+        <h2 class="card__title" th:text="#{design.components.alerts}">Alerts and notices</h2>
+        <p class="muted" th:text="#{design.components.alerts.note}">The API's own words, never a rephrasing.</p>
+
+        <h3 class="create__title" th:text="#{design.components.alerts.upstream}">Backend unreachable</h3>
+        <div class="specimen">
+            <div class="alert">
+                <p th:text="#{projects.error.upstream}">The API cannot be reached.</p>
+                <p class="alert__detail">GET /api/projects → 503</p>
+            </div>
+            <p class="mono muted">.alert · .alert__detail</p>
+        </div>
+
+        <h3 class="create__title" th:text="#{design.components.alerts.problem}">Rejected write (400 / 409)</h3>
+        <div class="specimen">
+            <div th:with="headingKey='projects.error.badRequest', problem=${badRequestProblem}">
+                <div th:replace="~{projects/fragments :: problem}"></div>
+            </div>
+            <div th:with="headingKey='projects.error.conflict', problem=${conflictProblem}">
+                <div th:replace="~{projects/fragments :: problem}"></div>
+            </div>
+            <p class="mono muted">.alert · .problem · .problem__field · .problem__suggestions</p>
+        </div>
+
+        <h3 class="create__title" th:text="#{design.components.alerts.field}">Inline field message</h3>
+        <div class="specimen">
+            <div class="field-error">short_code: must be 2-6 characters of A-Z and 0-9</div>
+            <p class="mono muted">.field-error</p>
+        </div>
+    </section>
+
+    <!-- States: an empty section, a muted note, a hint below a control. -->
+    <section class="card" id="states">
+        <h2 class="card__title" th:text="#{design.components.states}">States</h2>
+        <p class="muted" th:text="#{design.components.states.note}">Nothing to show is a state of its own, not an empty box.</p>
+        <div class="specimen">
+            <p class="empty" th:text="#{projects.list.empty}">No projects found.</p>
+            <p class="muted" th:text="#{design.sample.text}">Quiet example text.</p>
+            <p class="hint" th:text="#{projects.create.hint}">Leave the short code empty…</p>
+            <p class="mono muted">.empty · .muted · .hint</p>
+        </div>
+    </section>
+</div>
+</body>
+</html>

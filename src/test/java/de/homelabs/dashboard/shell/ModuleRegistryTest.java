@@ -2,6 +2,7 @@ package de.homelabs.dashboard.shell;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,9 @@ import static org.assertj.core.groups.Tuple.tuple;
  * The module registry is the shell's navigation contract: one descriptor per module,
  * rail order = list order, the REST base URL taken from the module properties, and the
  * active module resolved from the request path so the shell knows whose subnav to show.
+ *
+ * <p>A module without a backend is a regular entry here: the design guide declares no REST
+ * base URL and still appears in the rail with its own subnav.
  */
 class ModuleRegistryTest {
 
@@ -24,7 +28,7 @@ class ModuleRegistryTest {
     void registersTheProjectsModule() {
         List<ModuleDescriptor> modules = registry.modules();
 
-        assertThat(modules).hasSize(1);
+        assertThat(modules).hasSize(2);
         ModuleDescriptor projects = modules.getFirst();
         assertThat(projects.id()).isEqualTo("projects");
         assertThat(projects.navKey()).isEqualTo("module.projects.nav");
@@ -32,11 +36,28 @@ class ModuleRegistryTest {
     }
 
     @Test
+    void registersTheDesignGuideAfterTheProjectsModule() {
+        ModuleDescriptor design = registry.modules().get(1);
+
+        assertThat(design.id()).isEqualTo("design");
+        assertThat(design.navKey()).isEqualTo("module.design.nav");
+        assertThat(design.basePath()).isEqualTo("/design");
+    }
+
+    @Test
     void takesTheRestBaseUrlFromTheModuleProperties() {
         assertThat(registry.find("projects"))
                 .get()
                 .extracting(ModuleDescriptor::apiBaseUrl)
-                .isEqualTo(PROJECTS_API);
+                .isEqualTo(Optional.of(PROJECTS_API));
+    }
+
+    @Test
+    void aModuleWithoutABackendDeclaresNoRestBaseUrl() {
+        assertThat(registry.find("design"))
+                .get()
+                .extracting(ModuleDescriptor::apiBaseUrl)
+                .isEqualTo(Optional.empty());
     }
 
     @Test
@@ -52,6 +73,14 @@ class ModuleRegistryTest {
     }
 
     @Test
+    void designDeclaresBothZones() {
+        assertThat(registry.find("design").orElseThrow().subnav())
+                .extracting(ModuleDescriptor.SubnavItem::labelKey, ModuleDescriptor.SubnavItem::path)
+                .containsExactly(tuple("module.design.subnav.structure", "/design"),
+                        tuple("module.design.subnav.components", "/design/components"));
+    }
+
+    @Test
     void resolvesTheActiveModuleFromTheRequestPath() {
         assertThat(registry.findByPath("/projects"))
                 .get()
@@ -59,6 +88,12 @@ class ModuleRegistryTest {
                 .isEqualTo("projects");
         assertThat(registry.findByPath("/projects/HP-1")).isPresent();
         assertThat(registry.findByPath("/projects-archive")).isEmpty();
+        assertThat(registry.findByPath("/design"))
+                .get()
+                .extracting(ModuleDescriptor::id)
+                .isEqualTo("design");
+        assertThat(registry.findByPath("/design/components")).isPresent();
+        assertThat(registry.findByPath("/design-notes")).isEmpty();
         assertThat(registry.findByPath("/")).isEmpty();
         assertThat(registry.findByPath(null)).isEmpty();
     }
@@ -66,11 +101,11 @@ class ModuleRegistryTest {
     @Test
     void keepsTheDeclaredSubnavOrderAndRejectsAnEmptyPlaceholder() {
         ModuleDescriptor withSubnav = new ModuleDescriptor("projects", "module.projects.nav", "/projects",
-                PROJECTS_API,
+                Optional.of(PROJECTS_API),
                 List.of(new ModuleDescriptor.SubnavItem("module.projects.subnav.list", "/projects"),
                         new ModuleDescriptor.SubnavItem("module.projects.subnav.new", "/projects/new")));
         ModuleDescriptor withoutSubnav = new ModuleDescriptor("projects", "module.projects.nav", "/projects",
-                PROJECTS_API, null);
+                Optional.of(PROJECTS_API), null);
 
         assertThat(withSubnav.subnav()).extracting(ModuleDescriptor.SubnavItem::labelKey)
                 .containsExactly("module.projects.subnav.list", "module.projects.subnav.new");
