@@ -108,8 +108,74 @@ class ProjectsViewsTest {
         assertThat(unnamed.assignee()).isNull();
     }
 
+    @Test
+    void mapsAFullRecordToTheItemViewWithTheRouteSegmentItsEditorsPostTo() {
+        ProjectsViews.ItemDetail workPackage = ProjectsViews.itemDetail(fullWorkPackage());
+        ProjectsViews.ItemDetail task = ProjectsViews.itemDetail(fullTask());
+
+        assertThat(workPackage.kind()).isEqualTo(ProjectsViews.ItemDetail.WORK_PACKAGES);
+        assertThat(workPackage.reference()).isEqualTo("WEB-1");
+        assertThat(workPackage.status()).isEqualTo("in_progress");
+        assertThat(workPackage.statusKey()).isEqualTo("status.item.in_progress");
+        assertThat(workPackage.statusClass()).isEqualTo("badge--active");
+        assertThat(workPackage.assigneeSub()).isEqualTo("8f2a1c44-0d4b-4f0a-9b28-2d5c6e1f7a90");
+        assertThat(workPackage.assignee()).isEqualTo("di.mueller");
+        assertThat(workPackage.seq()).isEqualTo(7);
+        assertThat(workPackage.sortOrder()).isEqualTo(2);
+        assertThat(workPackage.labels()).containsExactly("designed");
+        assertThat(workPackage.workPackageReference())
+                .as("a work package lives outside the grouping it owns")
+                .isNull();
+
+        assertThat(task.kind()).isEqualTo(ProjectsViews.ItemDetail.TASKS);
+        assertThat(task.workPackageReference()).isEqualTo("WEB-1");
+    }
+
+    @Test
+    void trailsAnItemPageThroughTheProjectAndTheTasksWorkPackage() {
+        ProjectsViews.ProjectHeader project = ProjectsViews.projectHeader(fullProject());
+
+        ProjectsViews.Breadcrumb workPackageTrail = ProjectsViews.breadcrumb(project,
+                ProjectsViews.itemDetail(fullWorkPackage()));
+        assertThat(workPackageTrail.ancestors()).extracting(ProjectsViews.Crumb::label)
+                .containsExactly("homelabs dashboard");
+        assertThat(workPackageTrail.current()).isEqualTo("WEB-1");
+
+        ProjectsViews.Breadcrumb taskTrail = ProjectsViews.breadcrumb(project, ProjectsViews.itemDetail(fullTask()));
+        assertThat(taskTrail.ancestors()).extracting(ProjectsViews.Crumb::label)
+                .as("the task trail names the work package it belongs to")
+                .containsExactly("homelabs dashboard", "WEB-1");
+        assertThat(taskTrail.ancestors()).extracting(ProjectsViews.Crumb::path)
+                .as("the project crumb leads back to the project, the package crumb to its own page")
+                .containsExactly("/projects/WEB", "/projects/WEB/work-packages/WEB-1");
+        assertThat(taskTrail.current()).isEqualTo("WEB-2");
+    }
+
     private static List<String> itemStatusKeys() {
         return List.of("todo", "in_progress", "blocked", "done", "cancelled");
+    }
+
+    private static ProjectRecord fullProject() {
+        return new ProjectRecord(UUID.randomUUID(), "WEB", "homelabs dashboard", "<p>description</p>",
+                "description", "active", "8f2a1c44", "di.mueller", Instant.parse("2026-11-02T10:00:00Z"),
+                Instant.parse("2026-11-03T09:00:00Z"), List.of(label()));
+    }
+
+    private static WorkPackageRecord fullWorkPackage() {
+        return new WorkPackageRecord(UUID.randomUUID(), "WEB-1", UUID.randomUUID(), "WEB", "Package one",
+                "<p>package</p>", "package", "in_progress", "8f2a1c44-0d4b-4f0a-9b28-2d5c6e1f7a90", "di.mueller",
+                LocalDate.parse("2026-11-20"), 7, 2, Instant.parse("2026-11-02T10:00:00Z"),
+                Instant.parse("2026-11-03T09:00:00Z"), List.of(label()));
+    }
+
+    private static TaskRecord fullTask() {
+        return new TaskRecord(UUID.randomUUID(), "WEB-2", UUID.randomUUID(), "WEB", FIRST_PACKAGE, "WEB-1",
+                "A task", "<p>task</p>", "task", "todo", null, null, null, 8, 3,
+                Instant.parse("2026-11-02T10:00:00Z"), Instant.parse("2026-11-03T09:00:00Z"), List.of());
+    }
+
+    private static LabelRecord label() {
+        return new LabelRecord(UUID.randomUUID(), "designed", null);
     }
 
     private static ItemSummary packageRow(UUID id, String reference, String title, int sortOrder) {

@@ -50,7 +50,11 @@ canonical description, labels, the work-package/task tree in the backend's plan 
 and the comment, activity and attachment sections. The plan's rows edit themselves —
 status, assignee, due date and position are one control per request, so a PATCH sends
 exactly what was touched — and work packages, tasks and comments are created in place.
-Deactivate, activate and archive are the detail header's explicit moves; an archived
+Every tree row opens the item's own page (`/projects/{reference}/work-packages/{item}`,
+`…/tasks/{item}`): the full record with its title, description, labels and — on a task —
+work-package editor, a task list in plan order on a work package, and the same project
+header and a breadcrumb back to the project on both. Deactivate, activate and archive are
+the detail header's explicit moves; an archived
 project stays readable with its controls in place, and the API's refusal (409) shows up
 at the row or form that caused it. Every mutation answers with the region it changed,
 and every rejected write renders the API's own body, field names and suggestions

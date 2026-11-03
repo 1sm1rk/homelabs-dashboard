@@ -37,9 +37,12 @@ import tools.jackson.databind.ObjectMapper;
 @ControllerAdvice(assignableTypes = ProjectsController.class)
 class ProjectsUpstreamErrorHandler {
 
-    private static final String VIEW = "projects/error";
+    /** The error page and the heading keys the module answers upstream failures with. */
+    static final String ERROR_VIEW = "projects/error";
 
-    private static final String FRAGMENT = VIEW + " :: notice";
+    static final String NOT_FOUND_KEY = "projects.error.notFound";
+
+    private static final String FRAGMENT = ERROR_VIEW + " :: notice";
 
     /** The inline block a rejected mutation renders into its form or row. */
     private static final String PROBLEM = "projects/fragments :: problem";
@@ -58,7 +61,7 @@ class ProjectsUpstreamErrorHandler {
             return new ModelAndView("redirect:/oauth2/authorization/" + AccessTokenProvider.REGISTRATION_ID);
         }
         String headingKey = switch (status) {
-            case 404 -> "projects.error.notFound";
+            case 404 -> NOT_FOUND_KEY;
             case 400 -> "projects.error.badRequest";
             case 409 -> "projects.error.conflict";
             default -> "projects.error.upstream";
@@ -90,7 +93,7 @@ class ProjectsUpstreamErrorHandler {
 
     private ModelAndView notice(String headingKey, String detail, HttpServletRequest request,
             HttpServletResponse response) {
-        ModelAndView view = new ModelAndView(HtmxRequest.isFragment(request) ? FRAGMENT : VIEW);
+        ModelAndView view = new ModelAndView(HtmxRequest.isFragment(request) ? FRAGMENT : ERROR_VIEW);
         view.addObject("headingKey", headingKey);
         view.addObject("detail", detail);
         if (HtmxRequest.isFragment(request)) {

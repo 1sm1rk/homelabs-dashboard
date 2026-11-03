@@ -565,6 +565,36 @@ textarea {
     margin-bottom: var(--space-5);
 }
 
+/* The trail above an item page: plain text links, one separator between the crumbs, the
+   open item muted. No box, no background — it is a line, not a component. */
+.breadcrumb {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+}
+
+.breadcrumb__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-muted);
+}
+
+.breadcrumb__item + .breadcrumb__item::before {
+    content: "/";
+    margin-right: var(--space-2);
+    color: var(--color-text-muted);
+}
+
+.breadcrumb__item--current {
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
 .page__meta {
     display: flex;
     flex-wrap: wrap;
@@ -864,6 +894,75 @@ textarea {
 
 .problem__suggestions code {
     font-family: var(--font-mono);
+}
+
+/* --------------------------------------------------------------------------
+   Item pages: the full record and its editors
+   -------------------------------------------------------------------------- */
+
+/* The record as a definition list in two columns: term left, value right, one line per
+   field. No table — the fields are labels, not a dataset. */
+.record {
+    display: grid;
+    grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+    gap: var(--space-1) var(--space-4);
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.record dt {
+    color: var(--color-text-muted);
+}
+
+.record dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The canonical description inside the item card: the prose rules, without a card of
+   its own — it is part of the record, not a section next to it. */
+.item__description {
+    margin: 0 0 var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+/* One form per field, as many columns as the width allows; the text fields take the
+   whole row because their content is prose, not a token. */
+.editors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+}
+
+.editor--wide {
+    grid-column: 1 / -1;
+}
+
+/* The control and its save button on one line; the control takes the remaining width. */
+.editor__row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.editor__row input {
+    flex: 1 1 auto;
+    width: auto;
+}
+
+.editor .hint {
+    margin: 0;
 }
 
 /* The comment form closes the section it belongs to. */

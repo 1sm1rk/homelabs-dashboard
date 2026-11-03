@@ -5,10 +5,12 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -34,7 +36,7 @@ public final class FakeProjectsApi implements AutoCloseable {
 
     private final HttpServer server;
 
-    private final Map<String, Stub> stubs = new ConcurrentHashMap<>();
+    private final Map<String, Deque<Stub>> stubs = new ConcurrentHashMap<>();
 
     private final List<Call> calls = new CopyOnWriteArrayList<>();
 
@@ -57,6 +59,16 @@ public final class FakeProjectsApi implements AutoCloseable {
     /** Answers {@code method path} with the given status and JSON body. */
     public void json(String method, String path, int status, String json) {
         stub(method, path, status, "application/json", json.getBytes(StandardCharsets.UTF_8), Map.of());
+    }
+
+    /**
+     * Queues one more answer for {@code method path}: the endpoint answers the queued
+     * bodies in order and repeats the last one. A view that reads the same resource twice
+     * — once to compare, once to render — can therefore show a changed state honestly.
+     */
+    public void queue(String method, String path, int status, String json) {
+        stubs.computeIfAbsent(method + " " + path, key -> new ConcurrentLinkedDeque<>())
+                .add(new Stub(status, "application/json", json.getBytes(StandardCharsets.UTF_8), Map.of()));
     }
 
     /** Answers {@code method path} with bytes, their content type and the given headers. */
@@ -93,7 +105,8 @@ public final class FakeProjectsApi implements AutoCloseable {
 
     private void stub(String method, String path, int status, String contentType, byte[] body,
             Map<String, String> headers) {
-        stubs.put(method + " " + path, new Stub(status, contentType, body, headers));
+        stubs.put(method + " " + path,
+                new ConcurrentLinkedDeque<>(List.of(new Stub(status, contentType, body, headers))));
     }
 
     private void handle(HttpExchange exchange) throws IOException {
@@ -106,7 +119,7 @@ public final class FakeProjectsApi implements AutoCloseable {
         calls.add(new Call(method, path, exchange.getRequestURI().getQuery(),
                 exchange.getRequestHeaders().getFirst("Authorization"), body));
 
-        Stub stub = stubs.get(method + " " + path);
+        Stub stub = next(method + " " + path);
         if (stub == null) {
             stub = new Stub(404, "application/json",
                     ("{\"error\":\"no stub for " + method + " " + path + "\"}").getBytes(StandardCharsets.UTF_8),
@@ -119,6 +132,15 @@ public final class FakeProjectsApi implements AutoCloseable {
         try (OutputStream out = exchange.getResponseBody()) {
             out.write(stub.body());
         }
+    }
+
+    /** The next queued answer; the last one repeats so an unqueued repeat still answers. */
+    private Stub next(String key) {
+        Deque<Stub> queue = stubs.get(key);
+        if (queue == null || queue.isEmpty()) {
+            return null;
+        }
+        return queue.size() > 1 ? queue.poll() : queue.peek();
     }
 
     @Override

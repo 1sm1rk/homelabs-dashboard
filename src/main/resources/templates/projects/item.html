@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de"
+      th:replace="~{layout :: page(title=${item.title}, content=~{::content})}">
+<body>
+<!-- One work package or task as its own page: the full record, every field editable in
+     place, and — for a work package — the tasks grouped under it. The breadcrumb and the
+     project header above it are the same fragments the project detail renders, so the
+     way back to the project never depends on the page the reader is on. -->
+<div class="page" th:fragment="content">
+    <nav th:replace="~{projects/fragments :: breadcrumb}"></nav>
+    <header th:replace="~{projects/fragments :: projectHeader}"></header>
+
+    <section class="card" id="item">
+        <div class="card__header">
+            <h2 class="card__title">
+                <span class="mono" th:text="${item.reference}">WEB-1</span>
+                <span th:text="${item.title}">Title</span>
+            </h2>
+            <span th:replace="~{projects/fragments :: badge(${item.statusKey}, ${item.statusClass})}"></span>
+        </div>
+        <p class="page__meta" th:if="${!#lists.isEmpty(item.labels)}">
+            <span th:replace="~{projects/fragments :: chips(${item.labels})}"></span>
+        </p>
+
+        <!-- The full record, field by field. The title, the reference and the state sit in
+             the header above; everything else the API answers is named here. -->
+        <dl class="record">
+            <dt th:text="#{projects.table.assignee}">Assigned to</dt>
+            <dd>
+                <span class="mono" th:if="${item.assigneeSub != null}" th:text="${item.assigneeSub}">8f2a1c44</span>
+                <span th:text="${item.assignee} ?: #{projects.item.unassigned}">di.mueller</span>
+            </dd>
+            <dt th:text="#{projects.table.due}">Due</dt>
+            <dd>
+                <time th:if="${item.dueDate != null}" th:text="${item.dueDate}">2026-11-20</time>
+                <span class="muted" th:if="${item.dueDate == null}" th:text="#{projects.item.unset}">—</span>
+            </dd>
+            <dt th:text="#{projects.item.seq}">Sequence</dt>
+            <dd class="mono" th:text="${item.seq}">7</dd>
+            <dt th:text="#{projects.table.position}">Position</dt>
+            <dd class="mono" th:text="${item.sortOrder}">2</dd>
+            <th:block th:if="${item.kind == 'tasks'}">
+                <dt th:text="#{projects.tree.workPackage}">Work package</dt>
+                <dd>
+                    <a class="mono" th:if="${item.workPackageReference != null}"
+                       th:href="@{/projects/{reference}/work-packages/{itemReference}(reference=${reference}, itemReference=${item.workPackageReference})}"
+                       th:text="${item.workPackageReference}">WEB-1</a>
+                    <span class="muted" th:if="${item.workPackageReference == null}"
+                          th:text="#{projects.tree.noPackage}">No work package</span>
+                </dd>
+            </th:block>
+            <dt th:text="#{projects.item.created}">Created</dt>
+            <dd class="muted">
+                <time th:if="${item.createdAt != null}"
+                      th:text="${#temporals.format(item.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-02 12:00</time>
+            </dd>
+            <dt th:text="#{projects.detail.updated}">Last changed</dt>
+            <dd class="muted">
+                <time th:if="${item.updatedAt != null}"
+                      th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-11-03 09:00</time>
+            </dd>
+        </dl>
+
+        <!-- Canonical content, rendered as HTML because the backend sanitized it; the
+             editor below sends it back as description_html and nothing else. -->
+        <div class="prose item__description" th:if="${!#strings.isEmpty(item.descriptionHtml)}">
+            <div th:utext="${item.descriptionHtml}">description</div>
+        </div>
+
+        <h3 class="card__title" th:text="#{projects.item.editors}">Edit</h3>
+        <!-- One form per field: a request carries exactly the field the reader changed, so
+             the API's tri-state falls out of the UI. The forms are htmx-only like the plan
+             rows — HTTP offers no plain-form PATCH, and the field values are the WIRE
+             names the API reads. A rejected write lands in the notice under its control. -->
+        <div class="editors">
+            <form class="editor editor--wide"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/title(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML"
+                  hx-disabled-elt="find button">
+                <label for="edit-title" th:text="#{projects.table.title}">Title</label>
+                <div class="editor__row">
+                    <input id="edit-title" type="text" name="title" required maxlength="200"
+                           th:value="${item.title}">
+                    <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                </div>
+                <div class="field-error" id="item-edit-notice-title" role="alert"></div>
+            </form>
+
+            <form class="editor"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/status(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML" hx-trigger="change">
+                <label for="edit-status" th:text="#{projects.table.status}">Status</label>
+                <select id="edit-status" name="status">
+                    <option th:each="option : ${itemStatusOptions}" th:value="${option.value}"
+                            th:selected="${option.value == item.status}"
+                            th:text="#{__${option.labelKey}__}">todo</option>
+                </select>
+                <div class="field-error" id="item-edit-notice-status" role="alert"></div>
+            </form>
+
+            <form class="editor"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/assignee(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML" hx-trigger="change">
+                <label for="edit-assignee" th:text="#{projects.table.assignee}">Assigned to</label>
+                <input id="edit-assignee" type="text" name="assignee_sub" th:value="${item.assigneeSub}">
+                <p class="hint" th:text="#{projects.item.assigneeHint}">Empty clears the assignment.</p>
+                <div class="field-error" id="item-edit-notice-assignee" role="alert"></div>
+            </form>
+
+            <form class="editor"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/due-date(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML" hx-trigger="change">
+                <label for="edit-due-date" th:text="#{projects.table.due}">Due</label>
+                <input id="edit-due-date" type="date" name="due_date" th:value="${item.dueDate}">
+                <p class="hint" th:text="#{projects.item.dueHint}">Empty clears the due date.</p>
+                <div class="field-error" id="item-edit-notice-due-date" role="alert"></div>
+            </form>
+
+            <form class="editor"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/sort-order(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML" hx-trigger="change">
+                <label for="edit-sort-order" th:text="#{projects.table.position}">Position</label>
+                <input id="edit-sort-order" type="number" min="1" name="sort_order"
+                       th:value="${item.sortOrder}">
+                <div class="field-error" id="item-edit-notice-sort-order" role="alert"></div>
+            </form>
+
+            <form class="editor"
+                  th:if="${item.kind == 'tasks'}"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/work-package(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML" hx-trigger="change">
+                <label for="edit-work-package" th:text="#{projects.tree.workPackage}">Work package</label>
+                <select id="edit-work-package" name="work_package_id">
+                    <option value="" th:selected="${item.workPackageReference == null}"
+                            th:text="#{projects.tree.noPackage}">No work package</option>
+                    <option th:each="node : ${workPackages}" th:value="${node.reference}"
+                            th:selected="${node.reference == item.workPackageReference}"
+                            th:text="|${node.reference} · ${node.title}|">WEB-1</option>
+                </select>
+                <p class="hint" th:text="#{projects.item.moveHint}">The empty choice removes the grouping.</p>
+                <div class="field-error" id="item-edit-notice-work-package" role="alert"></div>
+            </form>
+
+            <form class="editor editor--wide"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/description(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML"
+                  hx-disabled-elt="find button">
+                <label for="edit-description" th:text="#{projects.create.description}">Description</label>
+                <textarea id="edit-description" name="description_html" rows="8"
+                          th:text="${item.descriptionHtml}"></textarea>
+                <p class="hint" th:text="#{projects.item.descriptionHint}">Canonical HTML.</p>
+                <div class="editor__row">
+                    <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                </div>
+                <div class="field-error" id="item-edit-notice-description" role="alert"></div>
+            </form>
+
+            <form class="editor editor--wide"
+                  th:with="action=@{/projects/{reference}/{kind}/{itemReference}/labels(reference=${reference}, kind=${item.kind}, itemReference=${item.reference})}"
+                  th:attr="hx-patch=${action}" hx-target="#main" hx-swap="innerHTML"
+                  hx-disabled-elt="find button">
+                <label for="edit-labels" th:text="#{projects.table.labels}">Labels</label>
+                <div class="editor__row">
+                    <input id="edit-labels" type="text" name="labels"
+                           th:value="${#strings.listJoin(item.labels, ', ')}">
+                    <button class="button" type="submit" th:text="#{projects.item.save}">Save</button>
+                </div>
+                <p class="hint" th:text="#{projects.item.labelsHint}">Comma separated; replaces the whole set.</p>
+                <div class="field-error" id="item-edit-notice-labels" role="alert"></div>
+            </form>
+        </div>
+    </section>
+
+    <!-- A work package's own tasks, in the plan order the API delivers — the same lean
+         lines the plan tree composes, each one linking into its task page. -->
+    <section class="card" id="item-tasks" th:if="${item.kind == 'work-packages'}">
+        <h2 class="card__title" th:text="#{projects.item.tasks}">Tasks</h2>
+        <p class="empty" th:if="${#lists.isEmpty(tasks)}" th:text="#{projects.tree.noTasks}">No tasks in this work package.</p>
+        <table class="tree" th:if="${!#lists.isEmpty(tasks)}">
+            <thead>
+            <tr>
+                <th th:text="#{projects.table.reference}">Reference</th>
+                <th th:text="#{projects.table.title}">Title</th>
+                <th th:text="#{projects.table.status}">Status</th>
+                <th th:text="#{projects.table.assignee}">Assignee</th>
+                <th th:text="#{projects.table.due}">Due</th>
+                <th th:text="#{projects.table.position}">Position</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr class="tree__task" th:each="task : ${tasks}"
+                th:with="page=@{/projects/{reference}/tasks/{itemReference}(reference=${reference}, itemReference=${task.reference})}">
+                <td class="mono tree__reference"><a th:href="${page}" th:text="${task.reference}">WEB-2</a></td>
+                <td class="tree__title"><a th:href="${page}" th:text="${task.title}">title</a></td>
+                <td><span th:replace="~{projects/fragments :: badge(${task.statusKey}, ${task.statusClass})}"></span></td>
+                <td><span class="muted" th:text="${task.assignee} ?: #{projects.item.unassigned}">di.mueller</span></td>
+                <td class="mono" th:text="${task.dueDate}">2026-11-20</td>
+                <td class="mono" th:text="${task.sortOrder}">1</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</div>
+</body>
+</html>
