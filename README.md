@@ -63,6 +63,18 @@ which forwards the session's token and passes the bytes through — the browser 
 talks to the backend. The CSRF token rides the page body's `hx-headers` block, so every
 htmx request carries it without a token per form.
 
+## Design guide
+
+`/design` documents the frontend inside the frontend: the shell's zones, the inventory of
+pages that exist and — per API object — the wire fields the views read. `/design/components`
+renders every pattern (page and project header, breadcrumb, status badges, label chips,
+cards, list and plan rows, the record, the forms with the description field, the button
+variants, the alert and notice blocks, the empty states) with the markup of the real
+templates, so the DOM of that page is the copy source for a new view. Both pages are
+static — example content, no backend calls — registered in the module registry, translated
+through the same two bundles as the rest of the chrome and behind the login like every
+other route.
+
 `GET /health` is the open liveness probe (no session needed). Every other
 route redirects to the realm login until a session exists — with the values
 above the login is real, so the browser lands on the Keycloak login page and

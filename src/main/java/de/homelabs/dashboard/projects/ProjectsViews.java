@@ -26,8 +26,12 @@ import java.util.stream.Collectors;
  */
 public final class ProjectsViews {
 
-    /** The project statuses the list filter offers; empty means the API's default view. */
-    static final List<StatusOption> PROJECT_STATUS_OPTIONS = List.of(
+    /**
+     * The project statuses the list filter offers; empty means the API's default view.
+     * Public because the status vocabulary is the module's presentation contract: the
+     * design guide renders its options and badges from exactly this list.
+     */
+    public static final List<StatusOption> PROJECT_STATUS_OPTIONS = List.of(
             new StatusOption("active", "status.project.active"),
             new StatusOption("deactivated", "status.project.deactivated"),
             new StatusOption("archived", "status.project.archived"));
@@ -35,8 +39,9 @@ public final class ProjectsViews {
     /**
      * The item statuses the row editors offer, in the API's order: the same five lowercase
      * wire values the items carry, so a select can never send a value the API rejects.
+     * Public for the same reason as {@link #PROJECT_STATUS_OPTIONS}.
      */
-    static final List<StatusOption> ITEM_STATUS_OPTIONS = List.of(
+    public static final List<StatusOption> ITEM_STATUS_OPTIONS = List.of(
             new StatusOption("todo", "status.item.todo"),
             new StatusOption("in_progress", "status.item.in_progress"),
             new StatusOption("blocked", "status.item.blocked"),
@@ -221,8 +226,12 @@ public final class ProjectsViews {
         return labels.stream().map(LabelRecord::name).toList();
     }
 
-    /** Lifecycle status of a project as a message key; unknown values stay visible. */
-    static String projectStatusKey(String status) {
+    /**
+     * Lifecycle status of a project as a message key; unknown values stay visible. Public
+     * together with the class mappers below: they are the module's status vocabulary and
+     * the design guide renders its badges from exactly these functions.
+     */
+    public static String projectStatusKey(String status) {
         return switch (status == null ? "" : status) {
             case "active", "deactivated", "archived" -> "status.project." + status;
             default -> "status.unknown";
@@ -230,7 +239,7 @@ public final class ProjectsViews {
     }
 
     /** Badge modifier of a project status — archived is muted, deactivated warns. */
-    static String projectStatusClass(String status) {
+    public static String projectStatusClass(String status) {
         return switch (status == null ? "" : status) {
             case "active" -> "badge--active";
             case "deactivated" -> "badge--warning";
@@ -240,7 +249,7 @@ public final class ProjectsViews {
     }
 
     /** Work-package and task status as a message key. */
-    static String itemStatusKey(String status) {
+    public static String itemStatusKey(String status) {
         return switch (status == null ? "" : status) {
             case "todo", "in_progress", "blocked", "done", "cancelled" -> "status.item." + status;
             default -> "status.unknown";
@@ -248,7 +257,7 @@ public final class ProjectsViews {
     }
 
     /** Badge modifier of an item status; {@code todo} keeps the neutral badge. */
-    static String itemStatusClass(String status) {
+    public static String itemStatusClass(String status) {
         return switch (status == null ? "" : status) {
             case "in_progress" -> "badge--active";
             case "done" -> "badge--done";

@@ -35,7 +35,7 @@ class DashboardModulePropertiesTest {
                     ModuleRegistry registry = context.getBean(ModuleRegistry.class);
 
                     assertThat(registry.find("projects").orElseThrow().apiBaseUrl())
-                            .isEqualTo(URI.create("http://localhost:8093"));
+                            .contains(URI.create("http://localhost:8093"));
                 });
     }
 

@@ -1,9 +1,14 @@
 /* ==========================================================================
    homelabs dashboard — hand-written stylesheet.
-   Design tokens first, then the shell grid, then the base components.
-   No framework, no preprocessor, no build step; dark/light switch is
-   prefers-color-scheme over the same token names.
+   Layers, top to bottom: design tokens, reset, the shell grid, text
+   primitives, components, the design guide. No framework, no preprocessor, no
+   build step; dark/light switch is prefers-color-scheme over the same token
+   names.
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Tokens: type, rhythm, radius, layout widths and the colour vocabulary
+   -------------------------------------------------------------------------- */
 
 :root {
     color-scheme: light dark;
@@ -354,7 +359,7 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   Page primitives
+   Text primitives: page titles, quiet text, machine-readable values
    -------------------------------------------------------------------------- */
 
 .page__title {
@@ -373,10 +378,33 @@ p {
     font-size: var(--text-sm);
 }
 
+/* Machine-readable values (references, positions, dates) stay in the mono stack so a
+   column of them lines up; everything else uses the sans stack. */
+.mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+/* A short note below a control: smaller and quieter than the field's own label. */
+.hint {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+/* Nothing to show is a state of its own — inside a table it spans the row. */
+.empty {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    padding: var(--space-3);
+    margin: 0;
+}
+
 /* --------------------------------------------------------------------------
-   Components: badges, buttons, tables, forms, cards
+   Components: badges, chips, buttons, tables, forms, cards, alerts
    -------------------------------------------------------------------------- */
 
+/* Status badge: text from a status message key, colour from one modifier class. */
 .badge {
     display: inline-block;
     padding: 0 var(--space-2);
@@ -410,6 +438,34 @@ p {
     color: var(--badge-danger-text);
 }
 
+/* A status that is deliberately out of play (archived project, cancelled item): the
+   same badge shape, but outlined instead of filled. */
+.badge--muted {
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* Label chips: backend data next to a status badge, never a second badge. */
+.chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    vertical-align: middle;
+}
+
+.chip {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* Button: the plain action. The modifier decides the intent, never the size. */
 .button {
     display: inline-flex;
     align-items: center;
@@ -440,6 +496,19 @@ p {
 .button--ghost:focus-visible {
     color: var(--color-text);
     background: var(--color-surface-muted);
+    filter: none;
+}
+
+/* A move that ends the record for good: the accent stays out of it. */
+.button--danger {
+    border-color: var(--badge-danger-text);
+    background: transparent;
+    color: var(--badge-danger-text);
+}
+
+.button--danger:hover,
+.button--danger:focus-visible {
+    background: var(--badge-danger-bg);
     filter: none;
 }
 
@@ -499,6 +568,7 @@ textarea {
     resize: vertical;
 }
 
+/* Card: the surface a section sits on, with an optional header row. */
 .card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -513,6 +583,25 @@ textarea {
     margin-bottom: var(--space-2);
 }
 
+.card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.card__header .card__title {
+    margin-bottom: 0;
+}
+
+/* A card that is a table: the table owns the padding of its cells. */
+.card--table {
+    padding: 0;
+    overflow-x: auto;
+}
+
+/* Alert: the headline of a failed backend answer, with the backend's own detail. */
 .alert {
     border-left: 3px solid var(--badge-danger-text);
     background: var(--badge-danger-bg);
@@ -523,43 +612,48 @@ textarea {
     margin-bottom: var(--space-4);
 }
 
-/* --------------------------------------------------------------------------
-   Module views: header, filters, lists, plan tree, sections
-   -------------------------------------------------------------------------- */
+.alert__detail {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+}
 
-/* Machine-readable values (references, positions, dates) stay in the mono stack so a
-   column of them lines up; everything else uses the sans stack. */
-.mono {
+/* The segments of an error body: one line per message, the wire field name as a code. */
+.problem {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.problem__field {
     font-family: var(--font-mono);
+    font-weight: 600;
+    margin-right: var(--space-1);
+}
+
+.problem__suggestions {
+    font-size: var(--text-sm);
+}
+
+.problem__suggestions code {
+    font-family: var(--font-mono);
+}
+
+/* A rejected write at the control that caused it: quiet until it carries something. */
+.field-error {
+    margin: 0;
     font-size: var(--text-xs);
+    color: var(--badge-danger-text);
+    overflow-wrap: anywhere;
 }
 
-/* A status that is deliberately out of play (archived project, cancelled item): the
-   same badge shape, but outlined instead of filled. */
-.badge--muted {
-    background: transparent;
-    border: 1px dashed var(--color-border);
-    color: var(--color-text-muted);
+.field-error:not(:empty) {
+    margin-top: var(--space-2);
 }
 
-/* Label chips: backend data next to a status badge, never a second badge. */
-.chips {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    vertical-align: middle;
-}
-
-.chip {
-    padding: 0 var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface-muted);
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    line-height: 1.6;
-    white-space: nowrap;
-}
+/* --------------------------------------------------------------------------
+   Page furniture: the header of an open project, its trail, its filter row
+   -------------------------------------------------------------------------- */
 
 .page__header {
     margin-bottom: var(--space-5);
@@ -595,6 +689,7 @@ textarea {
     font-size: var(--text-xs);
 }
 
+/* The meta line of a page header: reference, state and labels on one baseline. */
 .page__meta {
     display: flex;
     flex-wrap: wrap;
@@ -616,23 +711,9 @@ textarea {
     min-width: 12rem;
 }
 
-.card__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
-}
-
-.card__header .card__title {
-    margin-bottom: 0;
-}
-
-/* A card that is a table: the table owns the padding of its cells. */
-.card--table {
-    padding: 0;
-    overflow-x: auto;
-}
+/* --------------------------------------------------------------------------
+   Plan tree: package rows, indented task rows, their inline editors
+   -------------------------------------------------------------------------- */
 
 /* The plan tree: package rows carry a muted band, task rows are indented under them. */
 .tree {
@@ -659,180 +740,21 @@ textarea {
     margin: 0 0 var(--space-2);
 }
 
-/* Canonical description: the backend's sanitized HTML, styled conservatively so a
-   document written elsewhere still reads like the rest of the page. */
-.prose {
-    overflow-wrap: anywhere;
-}
-
-.prose > :last-child {
-    margin-bottom: 0;
-}
-
-.prose h1,
-.prose h2,
-.prose h3 {
-    font-size: var(--text-lg);
-    margin: var(--space-4) 0 var(--space-2);
-}
-
-.prose ul,
-.prose ol {
-    margin: 0 0 var(--space-3);
-    padding-left: var(--space-5);
-}
-
-.prose pre,
-.prose code {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    background: var(--color-surface-muted);
-}
-
-.prose code {
-    padding: 0 var(--space-1);
-    border-radius: var(--radius-sm);
-}
-
-.prose pre {
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    overflow-x: auto;
-}
-
-.prose blockquote {
-    margin: 0 0 var(--space-3);
-    padding-left: var(--space-3);
-    border-left: 3px solid var(--color-border);
-    color: var(--color-text-muted);
-}
-
-/* Comments and activity: one list, newest first, each entry a quiet block. */
-.comments,
-.activity {
-    list-style: none;
-    margin: 0;
+/* The notice column of a plan row: no padding while empty, so the row stays a row. */
+.tree__error {
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+    width: 0;
 }
 
-.comments__item,
-.activity__item {
-    border-top: 1px solid var(--color-border);
-    padding-top: var(--space-3);
-}
-
-.comments__item:first-child,
-.activity__item:first-child {
-    border-top: 0;
-    padding-top: 0;
-}
-
-.comments__meta,
-.activity__meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-sm);
-}
-
-.comments__author,
-.activity__event {
-    font-weight: 600;
-}
-
-/* Comment text is plain text from the backend: keep the line breaks the author typed. */
-.comments__text {
-    margin: 0;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.activity__detail {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-}
-
-.empty {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    padding: var(--space-3);
-    margin: 0;
-}
-
-.alert__detail {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    overflow-wrap: anywhere;
-}
-
-/* --------------------------------------------------------------------------
-   Mutation affordances: lifecycle actions, inline editors, form notices
-   -------------------------------------------------------------------------- */
-
-/* The lifecycle moves of the detail header: a row of plain buttons, one form each. */
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-}
-
-.actions form {
-    margin: 0;
-}
-
-/* A move that ends the project for good: the accent stays out of it. */
-.button--danger {
-    border-color: var(--badge-danger-text);
-    background: transparent;
-    color: var(--badge-danger-text);
-}
-
-.button--danger:hover,
-.button--danger:focus-visible {
-    background: var(--badge-danger-bg);
-    filter: none;
-}
-
-/* A create block below a list or a plan: separated from the rows it feeds. */
-.create {
-    margin: var(--space-4) 0 0;
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border);
-}
-
-.create__title {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    margin: 0 0 var(--space-2);
-}
-
-/* A create form that is itself a card keeps its own padding, no divider. */
-.create.card {
-    margin: 0 0 var(--space-4);
-    padding: var(--space-4);
-    border-top: 1px solid var(--color-border);
-}
-
-.hint {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-}
-
-/* Inline editors of a plan row: the same controls as the forms, sized for a cell. */
+/* Inline editors of a plan row: the same controls as the forms, sized for a cell.
+   The element prefix keeps the cascade even: input.inline-input ties the
+   input[type=…] base rules' specificity and sits later in the file, so a row
+   cell stays compact instead of inheriting the form width of 100%. */
 .inline-form {
     margin: 0;
 }
 
+input.inline-input,
 .inline-input,
 .status-select {
     width: auto;
@@ -843,11 +765,11 @@ textarea {
     border-radius: var(--radius-sm);
 }
 
-.inline-input--assignee {
+input.inline-input--assignee {
     width: 14ch;
 }
 
-.inline-input--position {
+input.inline-input--position {
     width: 6ch;
 }
 
@@ -857,47 +779,8 @@ textarea {
     font-weight: 600;
 }
 
-/* A rejected write: quiet until it carries something, then the API's words. */
-.field-error {
-    margin: 0;
-    font-size: var(--text-xs);
-    color: var(--badge-danger-text);
-    overflow-wrap: anywhere;
-}
-
-.field-error:not(:empty) {
-    margin-top: var(--space-2);
-}
-
-/* The notice column of a plan row: no padding while empty, so the row stays a row. */
-.tree__error {
-    padding: 0;
-    width: 0;
-}
-
-/* The segments of an error body: one line per message, the wire field name as a code. */
-.problem {
-    margin: var(--space-2) 0 0;
-    padding-left: var(--space-4);
-    font-size: var(--text-sm);
-}
-
-.problem__field {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    margin-right: var(--space-1);
-}
-
-.problem__suggestions {
-    font-size: var(--text-sm);
-}
-
-.problem__suggestions code {
-    font-family: var(--font-mono);
-}
-
 /* --------------------------------------------------------------------------
-   Item pages: the full record and its editors
+   Item pages: the full record, its description and its editor grid
    -------------------------------------------------------------------------- */
 
 /* The record as a definition list in two columns: term left, value right, one line per
@@ -965,6 +848,150 @@ textarea {
     margin: 0;
 }
 
+/* --------------------------------------------------------------------------
+   Comments and activity: one list per section, newest first
+   -------------------------------------------------------------------------- */
+
+.comments,
+.activity {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.comments__item,
+.activity__item {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-3);
+}
+
+.comments__item:first-child,
+.activity__item:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.comments__meta,
+.activity__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-sm);
+}
+
+.comments__author,
+.activity__event {
+    font-weight: 600;
+}
+
+/* Comment text is plain text from the backend: keep the line breaks the author typed. */
+.comments__text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.activity__detail {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Canonical content: the backend's sanitized HTML, styled conservatively
+   -------------------------------------------------------------------------- */
+
+/* Canonical description: the backend's sanitized HTML, styled conservatively so a
+   document written elsewhere still reads like the rest of the page. */
+.prose {
+    overflow-wrap: anywhere;
+}
+
+.prose > :last-child {
+    margin-bottom: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+    font-size: var(--text-lg);
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.prose ul,
+.prose ol {
+    margin: 0 0 var(--space-3);
+    padding-left: var(--space-5);
+}
+
+.prose pre,
+.prose code {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    background: var(--color-surface-muted);
+}
+
+.prose code {
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+}
+
+.prose pre {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.prose blockquote {
+    margin: 0 0 var(--space-3);
+    padding-left: var(--space-3);
+    border-left: 3px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Mutation affordances: lifecycle actions, create blocks, the comment form
+   -------------------------------------------------------------------------- */
+
+/* The lifecycle moves of the detail header: a row of plain buttons, one form each. */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.actions form {
+    margin: 0;
+}
+
+/* A create block below a list or a plan: separated from the rows it feeds. */
+.create {
+    margin: var(--space-4) 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.create__title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-2);
+}
+
+/* A create form that is itself a card keeps its own padding, no divider. */
+.create.card {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
 /* The comment form closes the section it belongs to. */
 .comment-form {
     display: flex;
@@ -981,4 +1008,60 @@ textarea {
 
 .comment-form .button {
     align-self: flex-start;
+}
+
+/* --------------------------------------------------------------------------
+   Design guide: the schematic of /design and the specimens of /design/components
+   -------------------------------------------------------------------------- */
+
+/* The shell diagram of the schematic section: the four zones of the layout, in the order
+   the layout renders them. Drawn with the tokens, not with the shell's own grid — a
+   diagram is not the shell. */
+.schematic {
+    display: grid;
+    grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(4rem, auto);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
+}
+
+.schematic__zone {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+}
+
+/* The rail spans all three rows of the working area; the other zones stack beside it. */
+.schematic__zone--rail {
+    grid-row: 1 / span 3;
+}
+
+.schematic__zone p {
+    margin: var(--space-1) 0 0;
+}
+
+/* A specimen: one pattern rendered with example content, delimited so a reader sees where
+   the example ends and the guide's own chrome begins. */
+.specimen {
+    padding: var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.specimen + .specimen {
+    margin-top: var(--space-3);
+}
+
+.specimen > :last-child {
+    margin-bottom: 0;
+}
+
+/* The class list a specimen is named with, below the pattern it documents. */
+.specimen .mono.muted {
+    margin: var(--space-2) 0 0;
 }

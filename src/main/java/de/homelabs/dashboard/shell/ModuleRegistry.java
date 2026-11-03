@@ -18,14 +18,25 @@ public class ModuleRegistry {
     private final List<ModuleDescriptor> modules;
 
     public ModuleRegistry(DashboardModuleProperties properties) {
-        // The module's own entry point: its overview route. Labels are message keys like
-        // the rail, so the bar renders in the reader's language without template changes.
-        this.modules = List.of(new ModuleDescriptor(
-                "projects",
-                "module.projects.nav",
-                "/projects",
-                properties.projects().apiUrl(),
-                List.of(new ModuleDescriptor.SubnavItem("module.projects.subnav.overview", "/projects"))));
+        // The module's own entry points: its overview route first. Labels are message keys
+        // like the rail, so the bar renders in the reader's language without template
+        // changes. The design guide declares no REST base URL — a module of the shell that
+        // renders no backend data is registered like any other.
+        this.modules = List.of(
+                new ModuleDescriptor(
+                        "projects",
+                        "module.projects.nav",
+                        "/projects",
+                        Optional.of(properties.projects().apiUrl()),
+                        List.of(new ModuleDescriptor.SubnavItem("module.projects.subnav.overview", "/projects"))),
+                new ModuleDescriptor(
+                        "design",
+                        "module.design.nav",
+                        "/design",
+                        Optional.empty(),
+                        List.of(new ModuleDescriptor.SubnavItem("module.design.subnav.structure", "/design"),
+                                new ModuleDescriptor.SubnavItem("module.design.subnav.components",
+                                        "/design/components"))));
     }
 
     /** The registered modules in rail order. */

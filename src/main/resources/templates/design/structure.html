@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de"
+      th:replace="~{layout :: page(title=#{design.structure.title}, content=~{::content})}">
+<body>
+<!-- The schematic half of the design guide: the shell's zones, the pages the dashboard
+     really has and the wire fields those pages read. Static on purpose — a structure that
+     read live data would show one state instead of the shape behind it. The field lists
+     below are written as text cells, and an integration test compares them against the
+     wire records in de.homelabs.dashboard.projects, so a renamed field turns the test red
+     instead of leaving a stale table here. -->
+<div class="page" th:fragment="content">
+    <header class="page__header">
+        <p class="page__meta">
+            <span class="mono muted">/design</span>
+        </p>
+        <h1 class="page__title" th:text="#{design.structure.heading}">Base structure</h1>
+        <p class="page__lead" th:text="#{design.structure.lead}">What the dashboard is made of.</p>
+    </header>
+
+    <!-- The shell: four zones, rendered from one layout template. The rail comes from the
+         module registry, so a module never edits the layout; the subnav appears only for a
+         module that declares entries. -->
+    <section class="card" id="shell">
+        <h2 class="card__title" th:text="#{design.structure.shell}">Shell</h2>
+        <p class="muted" th:text="#{design.structure.shell.lead}">One layout template around every page.</p>
+
+        <div class="schematic">
+            <div class="schematic__zone schematic__zone--rail">
+                <code class="mono">rail</code>
+                <p class="muted" th:text="#{design.shell.rail}">The modules.</p>
+            </div>
+            <div class="schematic__zone">
+                <code class="mono">topbar</code>
+                <p class="muted" th:text="#{design.shell.topbar}">Title and identity.</p>
+            </div>
+            <div class="schematic__zone">
+                <code class="mono">subnav</code>
+                <p class="muted" th:text="#{design.shell.subnav}">The open module's entries.</p>
+            </div>
+            <div class="schematic__zone">
+                <code class="mono">content</code>
+                <p class="muted" th:text="#{design.shell.content}">The module's page.</p>
+            </div>
+        </div>
+
+        <p class="muted hint" th:text="#{design.structure.shell.source}">Rail and subnav render from the registry.</p>
+    </section>
+
+    <!-- The pages that exist today: route pattern, the chrome name, and the API objects
+         each one renders. Route patterns stay literal — they are the vocabulary a reader
+         matches against the controller mappings. -->
+    <section class="card" id="pages">
+        <h2 class="card__title" th:text="#{design.structure.pages}">Page inventory</h2>
+        <p class="muted" th:text="#{design.structure.pages.lead}">Every route and what it shows.</p>
+
+        <table class="list">
+            <thead>
+            <tr>
+                <th th:text="#{design.schema.column.path}">Path</th>
+                <th th:text="#{design.schema.column.page}">Page</th>
+                <th th:text="#{design.schema.column.objects}">Objects</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td class="mono">/</td>
+                <td th:text="#{design.page.home}">Home</td>
+                <td class="muted" th:text="#{design.schema.column.objects.none}">—</td>
+            </tr>
+            <tr>
+                <td class="mono">/design</td>
+                <td th:text="#{design.page.structure}">This page — base structure</td>
+                <td class="muted" th:text="#{design.schema.column.objects.none}">—</td>
+            </tr>
+            <tr>
+                <td class="mono">/design/components</td>
+                <td th:text="#{design.page.components}">This page — components</td>
+                <td class="muted" th:text="#{design.schema.column.objects.none}">—</td>
+            </tr>
+            <tr>
+                <td class="mono">/projects</td>
+                <td th:text="#{design.page.projectList}">Project list</td>
+                <td class="mono">ProjectSummary</td>
+            </tr>
+            <tr>
+                <td class="mono">/projects/{reference}</td>
+                <td th:text="#{design.page.projectDetail}">Project detail</td>
+                <td class="mono">Project, ItemSummary, Comment, Activity, Attachment</td>
+            </tr>
+            <tr>
+                <td class="mono">/projects/{reference}/work-packages/{itemReference}</td>
+                <td th:text="#{design.page.workPackage}">Work package page</td>
+                <td class="mono">WorkPackage, Project, ItemSummary</td>
+            </tr>
+            <tr>
+                <td class="mono">/projects/{reference}/tasks/{itemReference}</td>
+                <td th:text="#{design.page.task}">Task page</td>
+                <td class="mono">Task, Project, ItemSummary</td>
+            </tr>
+            <tr>
+                <td class="muted" th:text="#{design.pages.errorPath}">any module route on a backend failure</td>
+                <td th:text="#{design.page.error}">Error page</td>
+                <td class="muted" th:text="#{design.schema.column.objects.none}">—</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p class="muted" th:text="#{design.pages.summaryNote}">The list and the plan read the lean summaries.</p>
+    </section>
+
+    <!-- One card per API object: the endpoint, then the wire fields of the FULL record and
+         the region that renders them. The names are snake_case and never translated —
+         they are the vocabulary a retry or a bug report has to use. -->
+    <section class="page" id="objects">
+        <h2 class="page__title" th:text="#{design.structure.objects}">API objects</h2>
+        <p class="muted" th:text="#{design.structure.objects.lead}">Wire fields of the full records.</p>
+        <p class="muted" th:text="#{design.structure.objects.note}">Names stay untranslated.</p>
+
+        <section class="card" id="object-project">
+            <h3 class="card__title">
+                <code class="mono">Project</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/projects/{idOrCode}</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">short_code</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                <tr>
+                    <td class="mono">name</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                <tr>
+                    <td class="mono">description_html</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.prose}">Description</td>
+                </tr>
+                <tr>
+                    <td class="mono">description_text</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">status</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                <tr>
+                    <td class="mono">owner_sub</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">owner_name</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">updated_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                <tr>
+                    <td class="mono">labels</td>
+                    <td class="mono">label[]</td>
+                    <td th:text="#{design.surface.header}">Project header</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-work-package">
+            <h3 class="card__title">
+                <code class="mono">WorkPackage</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/work-packages/{idOrRef}</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">reference</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">project_id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">project_short_code</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">title</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">description_html</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.prose}">Description</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">description_text</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">status</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">assignee_sub</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">assignee_name</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">due_date</td>
+                    <td class="mono">date</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">seq</td>
+                    <td class="mono">int</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">sort_order</td>
+                    <td class="mono">int</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">updated_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">labels</td>
+                    <td class="mono">label[]</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-task">
+            <h3 class="card__title">
+                <code class="mono">Task</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/tasks/{idOrRef}</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">reference</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">project_id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">project_short_code</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">work_package_id</td>
+                    <td class="mono">uuid</td>
+                    <td th:text="#{design.surface.editors}">Editors</td>
+                </tr>
+                <tr>
+                    <td class="mono">work_package_reference</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.breadcrumb}">Breadcrumb</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">title</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">description_html</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.prose}">Description</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">description_text</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">status</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">assignee_sub</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">assignee_name</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">due_date</td>
+                    <td class="mono">date</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">seq</td>
+                    <td class="mono">int</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">sort_order</td>
+                    <td class="mono">int</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">updated_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.record}">Record</td>
+                </tr>
+                <tr>
+                    <td class="mono">labels</td>
+                    <td class="mono">label[]</td>
+                    <td>
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.record}">Record</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-comment">
+            <h3 class="card__title">
+                <code class="mono">Comment</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/comments?parent=…</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_type</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">author_sub</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">author_name</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.comments}">Comments</td>
+                </tr>
+                <tr>
+                    <td class="mono">content</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.comments}">Comments</td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.comments}">Comments</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-activity">
+            <h3 class="card__title">
+                <code class="mono">Activity</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/activities?parent=…</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_type</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">actor_sub</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">actor_name</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.activity}">Activity</td>
+                </tr>
+                <tr>
+                    <td class="mono">source</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.activity}">Activity</td>
+                </tr>
+                <tr>
+                    <td class="mono">event_type</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.activity}">Activity</td>
+                </tr>
+                <tr>
+                    <td class="mono">detail</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.activity}">Activity</td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.activity}">Activity</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-attachment">
+            <h3 class="card__title">
+                <code class="mono">Attachment</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/attachments?parent=…</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td th:text="#{design.surface.attachments}">Attachments</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_type</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">entity_id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">filename</td>
+                    <td class="mono">string</td>
+                    <td th:text="#{design.surface.attachments}">Attachments</td>
+                </tr>
+                <tr>
+                    <td class="mono">mime_type</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">byte_size</td>
+                    <td class="mono">long</td>
+                    <td th:text="#{design.surface.attachments}">Attachments</td>
+                </tr>
+                <tr>
+                    <td class="mono">sha256</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">uploaded_by_sub</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">uploaded_by_name</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">created_at</td>
+                    <td class="mono">instant</td>
+                    <td th:text="#{design.surface.attachments}">Attachments</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="object-label">
+            <h3 class="card__title">
+                <code class="mono">Label</code>
+                <span class="muted" th:text="#{design.object.full}">full record</span>
+            </h3>
+            <p class="mono muted">GET /api/labels · carried by Project, WorkPackage, Task</p>
+            <table class="list">
+                <thead>
+                <tr>
+                    <th th:text="#{design.schema.column.field}">Field</th>
+                    <th th:text="#{design.schema.column.type}">Type</th>
+                    <th th:text="#{design.schema.column.surface}">Rendered in</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="mono">id</td>
+                    <td class="mono">uuid</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                <tr>
+                    <td class="mono">name</td>
+                    <td class="mono">string</td>
+                    <td>
+                        <span th:text="#{design.surface.header}">Project header</span>,
+                        <span th:text="#{design.surface.plan}">Plan table</span>,
+                        <span th:text="#{design.surface.editors}">Editors</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mono">color</td>
+                    <td class="mono">string</td>
+                    <td class="muted" th:text="#{design.surface.none}">not rendered</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </section>
+</div>
+</body>
+</html>
